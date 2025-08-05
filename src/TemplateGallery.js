@@ -714,7 +714,7 @@ export default class TemplateGallery {
         // Navigate button
         const navigateBtn = document.createElement('button');
         navigateBtn.className = 'bm-navigate-btn';
-        navigateBtn.title = 'Navigate to template';
+        navigateBtn.title = 'Set coordinates to template';
         navigateBtn.style.cssText = `
             background-color: rgba(255, 255, 255, 0.2);
             border: none;
@@ -733,7 +733,7 @@ export default class TemplateGallery {
 
         const navigateIcon = document.createElement('span');
         navigateIcon.className = 'bm-navigate-icon';
-        navigateIcon.textContent = '🎯';
+        navigateIcon.textContent = '📍';
         navigateBtn.appendChild(navigateIcon);
 
         // Remove button
@@ -1182,15 +1182,67 @@ export default class TemplateGallery {
 
     /**
      * Handles template navigation action
-     * Placeholder implementation - will be expanded in task 4.3
+     * Handles template navigation functionality by setting coordinates in overlay
+     * Sets the template coordinates in the main overlay coordinate input fields
+     * Requirements: 4.3
      * @param {string} templateId - ID of template to navigate to
      */
     handleTemplateNavigate(templateId) {
-        // Placeholder - basic navigation logic
-        console.log(`Navigate to template: ${templateId}`);
-        // TODO: Validate template coordinates
-        // TODO: Integrate with canvas navigation system
-        // TODO: Close gallery after navigation
+        console.log(`Setting coordinates for template: ${templateId}`);
+
+        // Find the template by ID
+        const template = this.templateManager.templatesArray?.find(t => 
+            (t.sortID + ' ' + t.authorID) === templateId
+        );
+
+        if (!template) {
+            console.error(`Template not found: ${templateId}`);
+            this.overlay.handleDisplayError('Template not found!');
+            return;
+        }
+
+        // Validate template coordinates
+        if (!template.coords || template.coords.length !== 4) {
+            console.error(`Invalid coordinates for template: ${templateId}`, template.coords);
+            this.overlay.handleDisplayError('Template coordinates are invalid!');
+            return;
+        }
+
+        const [tileX, tileY, pixelX, pixelY] = template.coords;
+
+        // Validate coordinate ranges
+        if (tileX < 0 || tileX > 2047 || tileY < 0 || tileY > 2047 ||
+            pixelX < 0 || pixelX > 999 || pixelY < 0 || pixelY > 999) {
+            console.error(`Coordinates out of range for template: ${templateId}`, template.coords);
+            this.overlay.handleDisplayError('Template coordinates are out of valid range!');
+            return;
+        }
+
+        try {
+            // Set coordinates in the main overlay input fields
+            this.overlay.updateInnerHTML('bm-input-tx', tileX.toString());
+            this.overlay.updateInnerHTML('bm-input-ty', tileY.toString());
+            this.overlay.updateInnerHTML('bm-input-px', pixelX.toString());
+            this.overlay.updateInnerHTML('bm-input-py', pixelY.toString());
+
+            // Update the API manager coordinates if available
+            if (this.templateManager.apiManager) {
+                this.templateManager.apiManager.coordsTilePixel = [tileX, tileY, pixelX, pixelY];
+            }
+
+            // Display success message
+            const templateName = template.displayName || 'Unnamed Template';
+            this.overlay.handleDisplayStatus(`Coordinates set to template "${templateName}" at Tile: ${tileX},${tileY} Pixel: ${pixelX},${pixelY}`);
+
+            console.log(`Successfully set coordinates for template "${templateName}":`, template.coords);
+
+            // Close gallery after successful coordinate setting
+            this.hide();
+
+        } catch (error) {
+            console.error(`Error setting coordinates for template ${templateId}:`, error);
+            this.overlay.handleDisplayError('Failed to set template coordinates!');
+        }
     }
 
 
