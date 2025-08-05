@@ -35,7 +35,7 @@ export default class Overlay {
     this.version = version; // Version of userscript
 
     this.apiManager = null; // The API manager instance. Later populated when setApiManager is called
-    
+
     this.outputStatusId = 'bm-output-status'; // ID for status element
 
     this.overlay = null; // The overlay root DOM HTMLElement
@@ -47,7 +47,7 @@ export default class Overlay {
    * @param {apiManager} apiManager - The apiManager class instance
    * @since 0.41.4
    */
-  setApiManager(apiManager) {this.apiManager = apiManager;}
+  setApiManager(apiManager) { this.apiManager = apiManager; }
 
   /** Creates an element.
    * For **internal use** of the {@link Overlay} class.
@@ -56,7 +56,7 @@ export default class Overlay {
    * @returns {HTMLElement} HTML Element
    * @since 0.43.2
    */
-  #createElement(tag, properties = {}, additionalProperties={}) {
+  #createElement(tag, properties = {}, additionalProperties = {}) {
 
     const element = document.createElement(tag); // Creates the element
 
@@ -79,7 +79,7 @@ export default class Overlay {
     for (const [property, value] of Object.entries(additionalProperties)) {
       element[property] = value;
     }
-    
+
     return element;
   }
 
@@ -141,7 +141,7 @@ export default class Overlay {
    *   <div id="foo" class="bar"></div>
    * </body>
    */
-  addDiv(additionalProperties = {}, callback = () => {}) {
+  addDiv(additionalProperties = {}, callback = () => { }) {
 
     const properties = {}; // Shared <div> DOM properties
 
@@ -166,7 +166,7 @@ export default class Overlay {
    *   <p id="foo" class="bar">Foobar.</p>
    * </body>
    */
-  addP(additionalProperties = {}, callback = () => {}) {
+  addP(additionalProperties = {}, callback = () => { }) {
 
     const properties = {}; // Shared <p> DOM properties
 
@@ -191,7 +191,7 @@ export default class Overlay {
    *   <small id="foo" class="bar">Foobar.</small>
    * </body>
    */
-  addSmall(additionalProperties = {}, callback = () => {}) {
+  addSmall(additionalProperties = {}, callback = () => { }) {
 
     const properties = {}; // Shared <small> DOM properties
 
@@ -216,7 +216,7 @@ export default class Overlay {
    *   <img id="foo" src="./img.png" class="bar">
    * </body>
    */
-  addImg(additionalProperties = {}, callback = () => {}) {
+  addImg(additionalProperties = {}, callback = () => { }) {
 
     const properties = {}; // Shared <img> DOM properties
 
@@ -242,7 +242,7 @@ export default class Overlay {
    *   <h6 id="foo" class="bar">Foobar.</h6>
    * </body>
    */
-  addHeader(level, additionalProperties = {}, callback = () => {}) {
+  addHeader(level, additionalProperties = {}, callback = () => { }) {
 
     const properties = {}; // Shared header DOM properties
 
@@ -267,7 +267,7 @@ export default class Overlay {
    *   <hr id="foo" class="bar">
    * </body>
    */
-  addHr(additionalProperties = {}, callback = () => {}) {
+  addHr(additionalProperties = {}, callback = () => { }) {
 
     const properties = {}; // Shared <hr> DOM properties
 
@@ -292,7 +292,7 @@ export default class Overlay {
    *   <br id="foo" class="bar">
    * </body>
    */
-  addBr(additionalProperties = {}, callback = () => {}) {
+  addBr(additionalProperties = {}, callback = () => { }) {
 
     const properties = {}; // Shared <br> DOM properties
 
@@ -320,11 +320,11 @@ export default class Overlay {
    *   </label>
    * </body>
    */
-  addCheckbox(additionalProperties = {}, callback = () => {}) {
+  addCheckbox(additionalProperties = {}, callback = () => { }) {
 
-    const properties = {'type': 'checkbox'}; // Shared checkbox DOM properties
+    const properties = { 'type': 'checkbox' }; // Shared checkbox DOM properties
 
-    const label = this.#createElement('label', {'textContent': additionalProperties['textContent'] ?? ''}); // Creates the label element
+    const label = this.#createElement('label', { 'textContent': additionalProperties['textContent'] ?? '' }); // Creates the label element
     delete additionalProperties['textContent']; // Deletes 'textContent' DOM property before adding the properties to the checkbox
     const checkbox = this.#createElement('input', properties, additionalProperties); // Creates the checkbox element
     label.insertBefore(checkbox, label.firstChild); // Makes the checkbox the first child of the label (before the text content)
@@ -332,7 +332,7 @@ export default class Overlay {
     callback(this, label, checkbox); // Runs any script passed in through the callback
     return this;
   }
-  
+
   /** Adds a `<button>` to the overlay.
    * This `<button>` element will have properties shared between all `<button>` elements in the overlay.
    * You can override the shared properties by using a callback.
@@ -349,7 +349,7 @@ export default class Overlay {
    *   <button id="foo" class="bar">Foobar.</button>
    * </body>
    */
-  addButton(additionalProperties = {}, callback = () => {}) {
+  addButton(additionalProperties = {}, callback = () => { }) {
 
     const properties = {}; // Shared <button> DOM properties
 
@@ -383,7 +383,7 @@ export default class Overlay {
    *   <button id="foo" class="bar" title="Help: Foobar.">?</button>
    * </body>
    */
-  addButtonHelp(additionalProperties = {}, callback = () => {}) {
+  addButtonHelp(additionalProperties = {}, callback = () => { }) {
 
     const tooltip = additionalProperties['title'] ?? additionalProperties['textContent'] ?? 'Help: No info'; // Retrieves the tooltip
 
@@ -421,7 +421,7 @@ export default class Overlay {
    *   <input id="foo" class="bar">Foobar.</input>
    * </body>
    */
-  addInput(additionalProperties = {}, callback = () => {}) {
+  addInput(additionalProperties = {}, callback = () => { }) {
 
     const properties = {}; // Shared <input> DOM properties
 
@@ -449,9 +449,9 @@ export default class Overlay {
    *   </div>
    * </body>
    */
-  addInputFile(additionalProperties = {}, callback = () => {}) {
-    
-    const properties = {'type': 'file', 'style': 'display: none;'}; // Shared file input DOM properties
+  addInputFile(additionalProperties = {}, callback = () => { }) {
+
+    const properties = { 'type': 'file', 'style': 'display: none;' }; // Shared file input DOM properties
     const text = additionalProperties['textContent'] ?? ''; // Retrieves the text content
 
     delete additionalProperties['textContent']; // Deletes the text content before applying the additional properties to the file input
@@ -459,7 +459,7 @@ export default class Overlay {
     const container = this.#createElement('div'); // Container for file input
     const input = this.#createElement('input', properties, additionalProperties); // Creates the file input
     this.buildElement(); // Signifies that we are done adding children to the file input
-    const button = this.#createElement('button', {'textContent': text});
+    const button = this.#createElement('button', { 'textContent': text });
     this.buildElement(); // Signifies that we are done adding children to the button
     this.buildElement(); // Signifies that we are done adding children to the container
 
@@ -497,7 +497,7 @@ export default class Overlay {
    *   <textarea id="foo" class="bar">Foobar.</textarea>
    * </body>
    */
-  addTextarea(additionalProperties = {}, callback = () => {}) {
+  addTextarea(additionalProperties = {}, callback = () => { }) {
 
     const properties = {}; // Shared <textarea> DOM properties
 
@@ -514,17 +514,17 @@ export default class Overlay {
    * @param {boolean} [doSafe] - (Optional) Should `textContent` be used instead of `innerHTML` to avoid XSS? False by default
    * @since 0.24.2
    */
-  updateInnerHTML(id, html, doSafe=false) {
+  updateInnerHTML(id, html, doSafe = false) {
 
     const element = document.getElementById(id.replace(/^#/, '')); // Retrieve the element from the 'id' (removed the '#')
-    
-    if (!element) {return;} // Kills itself if the element does not exist
+
+    if (!element) { return; } // Kills itself if the element does not exist
 
     // Input elements don't have innerHTML, so we modify the value attribute instead
     if (element instanceof HTMLInputElement) {
       element.value = html;
       return;
-    } 
+    }
 
     if (doSafe) {
       element.textContent = html; // Populate element with plain-text HTML/text
@@ -553,7 +553,7 @@ export default class Overlay {
     }
 
     // What to do when the mouse is pressed down on the element that moves things
-    iMoveThings.addEventListener('mousedown', function(event) {
+    iMoveThings.addEventListener('mousedown', function (event) {
       isDragging = true;
       offsetX = event.clientX - moveMe.getBoundingClientRect().left;
       offsetY = event.clientY - moveMe.getBoundingClientRect().top;
@@ -562,10 +562,10 @@ export default class Overlay {
     });
 
     // What to do when the touch starts on the element that moves things
-    iMoveThings.addEventListener('touchstart', function(event) {
+    iMoveThings.addEventListener('touchstart', function (event) {
       isDragging = true;
       const touch = event?.touches?.[0];
-      if (!touch) {return;}
+      if (!touch) { return; }
       offsetX = touch.clientX - moveMe.getBoundingClientRect().left; // Distance between the left edge of the overlay, and the cursor
       offsetY = touch.clientY - moveMe.getBoundingClientRect().top; // Distance between the top edge of the overlay, and the cursor
       document.body.style.userSelect = 'none'; // Prevents text selection while dragging
@@ -573,7 +573,7 @@ export default class Overlay {
     }, { passive: false }); // Prevents scrolling from being captured
 
     // What to do when the mouse is moved while dragging
-    document.addEventListener('mousemove', function(event) {
+    document.addEventListener('mousemove', function (event) {
       if (isDragging) {
         moveMe.style.left = (event.clientX - offsetX) + 'px'; // Binds the overlay to the left side of the screen, and sets it's position to the cursor
         moveMe.style.top = (event.clientY - offsetY) + 'px'; // Binds the overlay to the top of the screen, and sets it's position to the cursor
@@ -582,10 +582,10 @@ export default class Overlay {
     });
 
     // What to do when the touch moves while dragging
-    document.addEventListener('touchmove', function(event) {
+    document.addEventListener('touchmove', function (event) {
       if (isDragging) {
         const touch = event?.touches?.[0];
-        if (!touch) {return;}
+        if (!touch) { return; }
         moveMe.style.left = (touch.clientX - offsetX) + 'px'; // Binds the overlay to the left side of the screen, and sets it's position to the cursor
         moveMe.style.top = (touch.clientY - offsetY) + 'px'; // Binds the overlay to the top of the screen, and sets it's position to the cursor
         moveMe.style.right = ''; // Destroys the right property to unbind the overlay from the right side of the screen
@@ -594,21 +594,21 @@ export default class Overlay {
     }, { passive: false }); // Prevents scrolling from being captured
 
     // What to do when the mouse is released
-    document.addEventListener('mouseup', function() {
+    document.addEventListener('mouseup', function () {
       isDragging = false;
       document.body.style.userSelect = ''; // Restores text selection capability after dragging
       iMoveThings.classList.remove('dragging'); // Removes the dragging class
     });
 
     // What to do when the touch ends
-    document.addEventListener('touchend', function() {
+    document.addEventListener('touchend', function () {
       isDragging = false;
       document.body.style.userSelect = ''; // Restores text selection capability after dragging
       iMoveThings.classList.remove('dragging'); // Removes the dragging class
     });
 
     // What to do when the touch is cancelled
-    document.addEventListener('touchcancel', function() {
+    document.addEventListener('touchcancel', function () {
       isDragging = false;
       document.body.style.userSelect = ''; // Restores text selection capability after dragging
       iMoveThings.classList.remove('dragging'); // Removes the dragging class
@@ -637,5 +637,185 @@ export default class Overlay {
     const consoleError = console.error; // Creates a copy of the console.error function
     consoleError(`${this.name}: ${text}`); // Outputs something like "ScriptName: text" as an error message to the console
     this.updateInnerHTML(this.outputStatusId, 'Error: ' + text, true); // Update output Status box
+  }
+
+  /** Creates a modal overlay with backdrop.
+   * This creates a full-screen modal backdrop with a centered content container.
+   * @param {Object.<string, any>} [modalProperties={}] - The DOM properties of the modal backdrop element.
+   * @param {Object.<string, any>} [contentProperties={}] - The DOM properties of the modal content container.
+   * @param {function():void} [onClose=()=>{}] - Callback function to execute when modal is closed.
+   * @returns {Overlay} Overlay class instance (this)
+   * @since 0.59.0
+   * @example
+   * overlay.createModal({'id': 'my-modal'}, {'id': 'my-content'}, () => console.log('Modal closed'))
+   *   .addDiv({'textContent': 'Modal content'}).buildElement()
+   * .buildOverlay(document.body);
+   */
+  createModal(modalProperties = {}, contentProperties = {}, onClose = () => { }) {
+    // Default modal backdrop properties
+    const defaultModalProperties = {
+      'className': 'bm-modal-backdrop',
+      'style': `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background-color: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(2px);
+        z-index: 10000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+      `
+    };
+
+    // Default modal content properties
+    const defaultContentProperties = {
+      'className': 'bm-modal-content',
+      'style': `
+        background-color: rgba(21, 48, 99, 0.95);
+        color: white;
+        border-radius: 8px;
+        padding: 20px;
+        max-width: min(90vw, 800px);
+        max-height: min(80vh, 600px);
+        overflow-y: auto;
+        transform: scale(0.9);
+        transition: transform 0.3s ease;
+        font-family: 'Roboto Mono', 'Courier New', 'Monaco', 'DejaVu Sans Mono', monospace, 'Arial';
+        letter-spacing: 0.05em;
+      `
+    };
+
+    // Merge properties
+    const finalModalProperties = { ...defaultModalProperties, ...modalProperties };
+    const finalContentProperties = { ...defaultContentProperties, ...contentProperties };
+
+    // Create modal backdrop
+    const modal = this.#createElement('div', finalModalProperties);
+
+    // Create modal content container
+    const content = this.#createElement('div', finalContentProperties);
+
+    // Store close callback for later use
+    modal._onClose = onClose;
+
+    // Handle backdrop click to close
+    modal.addEventListener('click', (event) => {
+      if (event.target === modal) {
+        this.closeModal(modal);
+      }
+    });
+
+    // Handle ESC key to close
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        this.closeModal(modal);
+      }
+    };
+
+    // Store the event handler reference for cleanup
+    modal._keyHandler = handleKeyDown;
+    document.addEventListener('keydown', handleKeyDown);
+
+    // Animate modal entrance after a brief delay
+    setTimeout(() => {
+      modal.style.opacity = '1';
+      content.style.transform = 'scale(1)';
+    }, 10);
+
+    return this;
+  }
+
+  /** Closes a modal overlay.
+   * This handles the exit animation and cleanup of event listeners.
+   * @param {HTMLElement} modal - The modal backdrop element to close.
+   * @since 0.59.0
+   */
+  closeModal(modal) {
+    if (!modal) return;
+
+    // Get the content element for animation
+    const content = modal.querySelector('.bm-modal-content');
+
+    // Animate modal exit
+    modal.style.opacity = '0';
+    if (content) {
+      content.style.transform = 'scale(0.9)';
+    }
+
+    // Remove modal after animation completes
+    setTimeout(() => {
+      // Clean up event listener
+      if (modal._keyHandler) {
+        document.removeEventListener('keydown', modal._keyHandler);
+      }
+
+      // Execute close callback
+      if (modal._onClose) {
+        modal._onClose();
+      }
+
+      // Remove modal from DOM
+      modal.remove();
+    }, 300);
+  }
+
+  /** Adds a modal close button.
+   * This creates a styled close button typically placed in the modal header.
+   * @param {Object.<string, any>} [additionalProperties={}] - Additional DOM properties for the close button.
+   * @param {function(Overlay, HTMLButtonElement):void} [callback=()=>{}] - Additional JS modification to the button.
+   * @returns {Overlay} Overlay class instance (this)
+   * @since 0.59.0
+   */
+  addModalCloseButton(additionalProperties = {}, callback = () => { }) {
+    const properties = {
+      'textContent': '×',
+      'className': 'bm-modal-close',
+      'style': `
+        position: absolute;
+        top: 10px;
+        right: 15px;
+        background: none;
+        border: none;
+        color: white;
+        font-size: 24px;
+        cursor: pointer;
+        padding: 0;
+        width: 30px;
+        height: 30px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        transition: background-color 0.2s ease;
+      `,
+      'title': 'Close'
+    };
+
+    const closeButton = this.#createElement('button', properties, additionalProperties);
+
+    // Add hover effect
+    closeButton.addEventListener('mouseenter', () => {
+      closeButton.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+    });
+
+    closeButton.addEventListener('mouseleave', () => {
+      closeButton.style.backgroundColor = 'transparent';
+    });
+
+    // Handle close functionality
+    closeButton.addEventListener('click', () => {
+      const modal = closeButton.closest('.bm-modal-backdrop');
+      if (modal) {
+        this.closeModal(modal);
+      }
+    });
+
+    callback(this, closeButton);
+    return this;
   }
 }

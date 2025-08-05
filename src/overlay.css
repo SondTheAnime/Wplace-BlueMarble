@@ -151,6 +151,15 @@ div:has(> #bm-button-teleport) {
   vertical-align: bottom;
 }
 
+/* Gallery button styling */
+#bm-button-gallery {
+  font-size: 1em;
+  line-height: 1.2em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 /* Tile (x, y) & Pixel (x, y) input fields */
 #bm-contain-coords input[type="number"] {
   appearance: auto;
@@ -240,4 +249,195 @@ div:has(> #bm-input-file-template),
 /* All overlay buttons when disabled */
 #bm-overlay button:disabled {
   text-decoration: line-through;
+}
+
+/* Modal backdrop styles */
+.bm-modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(2px);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+/* Modal content container */
+.bm-modal-content {
+  background-color: rgba(21, 48, 99, 0.95);
+  color: white;
+  border-radius: 8px;
+  padding: 20px;
+  max-width: min(90vw, 800px);
+  max-height: min(80vh, 600px);
+  overflow-y: auto;
+  transform: scale(0.9);
+  transition: transform 0.3s ease;
+  font-family: 'Roboto Mono', 'Courier New', 'Monaco', 'DejaVu Sans Mono', monospace, 'Arial';
+  letter-spacing: 0.05em;
+  position: relative;
+}
+
+/* Modal close button */
+.bm-modal-close {
+  position: absolute;
+  top: 10px;
+  right: 15px;
+  background: none !important;
+  border: none !important;
+  color: white;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 0 !important;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50% !important;
+  transition: background-color 0.2s ease;
+}
+
+/* Modal close button hover effect */
+.bm-modal-close:hover {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Modal close button active state */
+.bm-modal-close:active {
+  background-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Template Gallery Modal Styles */
+.bm-gallery-backdrop {
+  z-index: 10001; /* Higher than regular modals */
+}
+
+.bm-gallery-content {
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Gallery header styles */
+.bm-gallery-header {
+  background: linear-gradient(135deg, rgba(21, 48, 99, 1) 0%, rgba(30, 60, 120, 1) 100%);
+  border-bottom: 2px solid rgba(100, 149, 237, 0.3);
+}
+
+.bm-gallery-header h2 {
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.bm-gallery-header-info {
+  background-color: rgba(0, 0, 0, 0.2);
+  padding: 5px 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Gallery content area */
+.bm-gallery-content-area {
+  background: linear-gradient(180deg, rgba(21, 48, 99, 0.95) 0%, rgba(15, 35, 75, 0.95) 100%);
+}
+
+.bm-gallery-content-area::-webkit-scrollbar {
+  width: 8px;
+}
+
+.bm-gallery-content-area::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+
+.bm-gallery-content-area::-webkit-scrollbar-thumb {
+  background: rgba(100, 149, 237, 0.6);
+  border-radius: 4px;
+}
+
+.bm-gallery-content-area::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 149, 237, 0.8);
+}
+
+/* Template grid layout */
+.bm-template-grid {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Empty state styling */
+.bm-empty-state {
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+.bm-empty-state div {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+/* Responsive design for smaller screens */
+@media (max-width: 768px) {
+  .bm-gallery-content {
+    width: 95vw !important;
+    height: 85vh !important;
+    max-width: none !important;
+  }
+  
+  .bm-template-grid {
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)) !important;
+    gap: 15px !important;
+  }
+  
+  .bm-gallery-header {
+    padding: 15px !important;
+  }
+  
+  .bm-gallery-header h2 {
+    font-size: 1.3em !important;
+  }
+  
+  .bm-gallery-content-area {
+    padding: 15px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .bm-gallery-content {
+    width: 98vw !important;
+    height: 90vh !important;
+  }
+  
+  .bm-template-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+  
+  .bm-gallery-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+  }
 }
