@@ -118,7 +118,8 @@ div#bm-overlay {
   margin-top: 2px;
   text-align: center;
   line-height: 1em;
-  padding: 0 !important; /* Overrides the padding in "#bm-overlay button" */
+  padding: 0 !important;
+  /* Overrides the padding in "#bm-overlay button" */
 }
 
 /* Pin button */
@@ -158,6 +159,18 @@ div:has(> #bm-button-teleport) {
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+#bm-button-gallery:hover {
+  transform: translateY(-1px) scale(1.02);
+  box-shadow: 0 6px 20px rgba(16, 97, 229, 0.4);
+}
+
+#bm-button-gallery:active {
+  transform: translateY(0) scale(0.98);
 }
 
 /* Tile (x, y) & Pixel (x, y) input fields */
@@ -190,7 +203,7 @@ div:has(> #bm-button-teleport) {
 }
 
 /* The template file upload button */
-div:has(> #bm-input-file-template) > button {
+div:has(> #bm-input-file-template)>button {
   width: 100%;
   white-space: nowrap;
   overflow: hidden;
@@ -233,22 +246,52 @@ div:has(> #bm-input-file-template),
   background-color: #144eb9;
   border-radius: 1em;
   padding: 0 0.75ch;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Button ripple effect */
+#bm-overlay button::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  transform: translate(-50%, -50%);
+  transition: width 0.6s, height 0.6s;
+  z-index: 0;
+}
+
+#bm-overlay button:active::before {
+  width: 300px;
+  height: 300px;
 }
 
 /* All overlay buttons when hovered/focused */
-#bm-overlay button:hover, #bm-overlay button:focus-visible {
+#bm-overlay button:hover,
+#bm-overlay button:focus-visible {
   background-color: #1061e5;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 97, 229, 0.3);
 }
 
 /* All overlay buttons when pressed (plus disabled color) */
 #bm-overlay button:active,
 #bm-overlay button:disabled {
   background-color: #2e97ff;
+  transform: translateY(0);
 }
 
 /* All overlay buttons when disabled */
 #bm-overlay button:disabled {
   text-decoration: line-through;
+  opacity: 0.6;
+  transform: none;
+  box-shadow: none;
 }
 
 /* Modal backdrop styles */
@@ -265,7 +308,27 @@ div:has(> #bm-input-file-template),
   align-items: center;
   justify-content: center;
   opacity: 0;
-  transition: opacity 0.3s ease;
+  visibility: hidden;
+  transition: opacity 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    visibility 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    backdrop-filter 0.4s ease;
+}
+
+/* Show modal backdrop */
+.bm-modal-backdrop.show {
+  opacity: 1;
+  visibility: visible;
+  backdrop-filter: blur(4px);
+}
+
+/* Modal entrance animation */
+.bm-modal-backdrop.entering {
+  animation: modalBackdropEnter 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+/* Modal exit animation */
+.bm-modal-backdrop.exiting {
+  animation: modalBackdropExit 0.3s cubic-bezier(0.55, 0.055, 0.675, 0.19) forwards;
 }
 
 /* Modal content container */
@@ -274,14 +337,37 @@ div:has(> #bm-input-file-template),
   color: white;
   border-radius: 8px;
   padding: 20px;
-  max-width: min(90vw, 800px);
-  max-height: min(80vh, 600px);
+  width: min(90vw, 800px);
+  height: min(80vh, 600px);
+  min-width: 300px;
   overflow-y: auto;
-  transform: scale(0.9);
-  transition: transform 0.3s ease;
+  transform: scale(0.8) translateY(20px);
+  opacity: 0;
+  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+    opacity 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    box-shadow 0.4s ease;
   font-family: 'Roboto Mono', 'Courier New', 'Monaco', 'DejaVu Sans Mono', monospace, 'Arial';
   letter-spacing: 0.05em;
   position: relative;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Show modal content */
+.bm-modal-backdrop.show .bm-modal-content {
+  transform: scale(1) translateY(0);
+  opacity: 1;
+  box-shadow: 0 25px 80px rgba(0, 0, 0, 0.6);
+}
+
+/* Modal content entrance animation */
+.bm-modal-backdrop.entering .bm-modal-content {
+  animation: modalContentEnter 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* Modal content exit animation */
+.bm-modal-backdrop.exiting .bm-modal-content {
+  animation: modalContentExit 0.3s cubic-bezier(0.55, 0.055, 0.675, 0.19) forwards;
 }
 
 /* Modal close button */
@@ -301,51 +387,89 @@ div:has(> #bm-input-file-template),
   align-items: center;
   justify-content: center;
   border-radius: 50% !important;
-  transition: background-color 0.2s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  opacity: 0.8;
 }
 
 /* Modal close button hover effect */
 .bm-modal-close:hover {
-  background-color: rgba(255, 255, 255, 0.1) !important;
+  background-color: rgba(255, 255, 255, 0.15) !important;
+  transform: rotate(90deg) scale(1.1);
+  opacity: 1;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 /* Modal close button active state */
 .bm-modal-close:active {
-  background-color: rgba(255, 255, 255, 0.2) !important;
+  background-color: rgba(255, 255, 255, 0.25) !important;
+  transform: rotate(90deg) scale(0.95);
 }
 
 /* Template Gallery Modal Styles */
 .bm-gallery-backdrop {
-  z-index: 10001; /* Higher than regular modals */
+  z-index: 10001;
+  /* Higher than regular modals */
+  background-color: rgba(0, 0, 0, 0.6);
 }
 
 .bm-gallery-content {
+  background-color: rgba(21, 48, 99, 0.95);
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
   border: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  flex-direction: column;
+  transform: scale(0.85) translateY(30px) rotateX(10deg);
+  opacity: 0;
+  transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1),
+    opacity 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    box-shadow 0.5s ease;
 }
 
-/* Gallery header styles */
+/* Gallery modal entrance animation */
+.bm-gallery-backdrop.show .bm-gallery-content {
+  transform: scale(1) translateY(0) rotateX(0deg);
+  opacity: 1;
+  box-shadow: 0 30px 100px rgba(0, 0, 0, 0.7);
+}
+
+/* Gallery modal entrance animation */
+.bm-gallery-backdrop.entering .bm-gallery-content {
+  animation: galleryModalEnter 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* Gallery modal exit animation */
+.bm-gallery-backdrop.exiting .bm-gallery-content {
+  animation: galleryModalExit 0.4s cubic-bezier(0.55, 0.055, 0.675, 0.19) forwards;
+}
+
+/* Gallery modal header */
 .bm-gallery-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 20px 15px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   background: linear-gradient(135deg, rgba(21, 48, 99, 1) 0%, rgba(30, 60, 120, 1) 100%);
-  border-bottom: 2px solid rgba(100, 149, 237, 0.3);
+  border-radius: 8px 8px 0 0;
+  margin: -20px -20px 0 -20px;
 }
 
 .bm-gallery-header h2 {
+  font-size: x-large;
+  font-weight: bold;
+  margin: 0;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-}
-
-.bm-gallery-header-info {
-  background-color: rgba(0, 0, 0, 0.2);
-  padding: 5px 10px;
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 /* Gallery content area */
 .bm-gallery-content-area {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
   background: linear-gradient(180deg, rgba(21, 48, 99, 0.95) 0%, rgba(15, 35, 75, 0.95) 100%);
 }
 
+/* Custom scrollbar for gallery content */
 .bm-gallery-content-area::-webkit-scrollbar {
   width: 8px;
 }
@@ -364,16 +488,24 @@ div:has(> #bm-input-file-template),
   background: rgba(100, 149, 237, 0.8);
 }
 
+
+
 /* Template grid layout */
 .bm-template-grid {
-  animation: fadeIn 0.3s ease-in-out;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 1rem;
+  opacity: 0;
+  animation: gridFadeIn 0.5s cubic-bezier(0.4, 0, 0.2, 1) 0.2s forwards;
 }
 
-@keyframes fadeIn {
+/* Grid entrance animation */
+@keyframes gridFadeIn {
   from {
     opacity: 0;
     transform: translateY(10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -382,19 +514,205 @@ div:has(> #bm-input-file-template),
 
 /* Empty state styling */
 .bm-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.7);
   animation: fadeIn 0.5s ease-in-out;
+}
+
+.bm-empty-state p {
+  font-size: medium;
+  margin: 0;
 }
 
 .bm-empty-state div {
   animation: pulse 2s ease-in-out infinite;
 }
 
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @keyframes pulse {
-  0%, 100% {
+
+  0%,
+  100% {
     opacity: 0.5;
   }
+
   50% {
     opacity: 0.8;
+  }
+}
+
+/* Modal Animation Keyframes */
+@keyframes modalBackdropEnter {
+  from {
+    opacity: 0;
+    backdrop-filter: blur(0px);
+  }
+
+  to {
+    opacity: 1;
+    backdrop-filter: blur(4px);
+  }
+}
+
+@keyframes modalBackdropExit {
+  from {
+    opacity: 1;
+    backdrop-filter: blur(4px);
+  }
+
+  to {
+    opacity: 0;
+    backdrop-filter: blur(0px);
+  }
+}
+
+@keyframes modalContentEnter {
+  0% {
+    opacity: 0;
+    transform: scale(0.8) translateY(20px);
+  }
+
+  60% {
+    opacity: 0.8;
+    transform: scale(1.02) translateY(-5px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes modalContentExit {
+  from {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+
+  to {
+    opacity: 0;
+    transform: scale(0.9) translateY(10px);
+  }
+}
+
+/* Gallery Modal Animation Keyframes */
+@keyframes galleryModalEnter {
+  0% {
+    opacity: 0;
+    transform: scale(0.85) translateY(30px) rotateX(10deg);
+  }
+
+  50% {
+    opacity: 0.7;
+    transform: scale(1.02) translateY(-10px) rotateX(-2deg);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0) rotateX(0deg);
+  }
+}
+
+@keyframes galleryModalExit {
+  from {
+    opacity: 1;
+    transform: scale(1) translateY(0) rotateX(0deg);
+  }
+
+  to {
+    opacity: 0;
+    transform: scale(0.9) translateY(20px) rotateX(5deg);
+  }
+}
+
+/* Template Card Animation Keyframes */
+@keyframes cardEnter {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes activeCardPulse {
+
+  0%,
+  100% {
+    box-shadow: 0 0 20px rgba(16, 97, 229, 0.4);
+  }
+
+  50% {
+    box-shadow: 0 0 30px rgba(16, 97, 229, 0.6);
+  }
+}
+
+@keyframes stateChange {
+  0% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.05);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Toggle Button Animation Keyframes */
+@keyframes toggleActive {
+  0% {
+    transform: scale(1);
+    background-color: rgba(139, 69, 19, 0.8);
+  }
+
+  50% {
+    transform: scale(1.1);
+    background-color: rgba(34, 139, 34, 0.6);
+  }
+
+  100% {
+    transform: scale(1);
+    background-color: rgba(34, 139, 34, 0.8);
+  }
+}
+
+@keyframes toggleInactive {
+  0% {
+    transform: scale(1);
+    background-color: rgba(34, 139, 34, 0.8);
+  }
+
+  50% {
+    transform: scale(1.1);
+    background-color: rgba(139, 69, 19, 0.6);
+  }
+
+  100% {
+    transform: scale(1);
+    background-color: rgba(139, 69, 19, 0.8);
   }
 }
 
@@ -405,20 +723,20 @@ div:has(> #bm-input-file-template),
     height: 85vh !important;
     max-width: none !important;
   }
-  
+
   .bm-template-grid {
     grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)) !important;
     gap: 15px !important;
   }
-  
+
   .bm-gallery-header {
     padding: 15px !important;
   }
-  
+
   .bm-gallery-header h2 {
     font-size: 1.3em !important;
   }
-  
+
   .bm-gallery-content-area {
     padding: 15px !important;
   }
@@ -429,15 +747,581 @@ div:has(> #bm-input-file-template),
     width: 98vw !important;
     height: 90vh !important;
   }
-  
+
   .bm-template-grid {
     grid-template-columns: 1fr !important;
     gap: 12px !important;
   }
-  
+
   .bm-gallery-header {
     flex-direction: column !important;
     align-items: flex-start !important;
     gap: 10px !important;
+  }
+}
+
+/* Template Card Styles */
+.bm-template-card {
+  background: rgba(0, 0, 0, 0.3);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  padding: 12px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  backdrop-filter: blur(4px);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 200px;
+  opacity: 0;
+  transform: translateY(20px) scale(0.95);
+  animation: cardEnter 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Staggered card entrance animation */
+.bm-template-card:nth-child(1) {
+  animation-delay: 0.1s;
+}
+
+.bm-template-card:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.bm-template-card:nth-child(3) {
+  animation-delay: 0.2s;
+}
+
+.bm-template-card:nth-child(4) {
+  animation-delay: 0.25s;
+}
+
+.bm-template-card:nth-child(5) {
+  animation-delay: 0.3s;
+}
+
+.bm-template-card:nth-child(6) {
+  animation-delay: 0.35s;
+}
+
+.bm-template-card:nth-child(n+7) {
+  animation-delay: 0.4s;
+}
+
+/* Template card hover effect */
+.bm-template-card:hover {
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.5);
+  border-color: rgba(100, 149, 237, 0.7);
+  background: rgba(0, 0, 0, 0.4);
+}
+
+/* Active template card styling */
+.bm-template-card[data-enabled="true"] {
+  border-color: #1061e5;
+  background: rgba(16, 97, 229, 0.15);
+  box-shadow: 0 0 20px rgba(16, 97, 229, 0.4);
+  animation: activeCardPulse 2s ease-in-out infinite;
+}
+
+/* Inactive template card styling */
+.bm-template-card[data-enabled="false"] {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.2);
+  opacity: 0.7;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Template card state change animation */
+.bm-template-card.state-changing {
+  animation: stateChange 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Template thumbnail container */
+.bm-template-thumbnail {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 6px;
+  padding: 8px;
+  min-height: 100px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Template thumbnail canvas */
+.bm-thumbnail-canvas {
+  max-width: 100px;
+  max-height: 100px;
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Template thumbnail placeholder */
+.bm-template-thumbnail .bm-thumbnail-placeholder {
+  width: 100px;
+  height: 100px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2em;
+  color: rgba(255, 255, 255, 0.5);
+  border: 2px dashed rgba(255, 255, 255, 0.2);
+}
+
+/* Template info section */
+.bm-template-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Template name */
+.bm-template-name {
+  font-size: medium;
+  font-weight: 500;
+  margin: 0;
+  color: white;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+/* Template stats container */
+.bm-template-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  font-size: small;
+  color: lightgray;
+}
+
+/* Template dimensions and pixel count */
+.bm-dimensions,
+.bm-pixel-count {
+  font-family: 'Roboto Mono', monospace;
+  font-size: x-small;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* Template coordinates */
+.bm-template-coords {
+  font-size: x-small;
+  color: rgba(100, 149, 237, 0.9);
+  margin: 0;
+  font-family: 'Roboto Mono', monospace;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+/* Template controls container */
+.bm-template-controls {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+  align-items: center;
+  margin-top: auto;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Template control buttons base styling */
+.bm-template-controls button {
+  background-color: rgba(20, 78, 185, 0.8) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  border-radius: 6px !important;
+  padding: 6px 8px !important;
+  font-size: 14px !important;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  min-height: 32px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Button ripple effect for template controls */
+.bm-template-controls button::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.4);
+  transform: translate(-50%, -50%);
+  transition: width 0.4s, height 0.4s;
+  z-index: 0;
+}
+
+.bm-template-controls button:active::before {
+  width: 100px;
+  height: 100px;
+}
+
+/* Template control buttons hover effect */
+.bm-template-controls button:hover {
+  background-color: #1061e5 !important;
+  border-color: rgba(255, 255, 255, 0.4) !important;
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+}
+
+/* Template control buttons active state */
+.bm-template-controls button:active {
+  background-color: #2e97ff !important;
+  transform: translateY(0) scale(0.98);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Toggle button specific styling */
+.bm-toggle-btn[data-enabled="true"] {
+  background-color: rgba(34, 139, 34, 0.8) !important;
+  border-color: rgba(144, 238, 144, 0.5) !important;
+  animation: toggleActive 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.bm-toggle-btn[data-enabled="true"]:hover {
+  background-color: rgba(50, 205, 50, 0.9) !important;
+  box-shadow: 0 6px 16px rgba(34, 139, 34, 0.4);
+}
+
+.bm-toggle-btn[data-enabled="false"] {
+  background-color: rgba(139, 69, 19, 0.8) !important;
+  border-color: rgba(255, 165, 0, 0.5) !important;
+  animation: toggleInactive 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.bm-toggle-btn[data-enabled="false"]:hover {
+  background-color: rgba(205, 92, 92, 0.9) !important;
+  box-shadow: 0 6px 16px rgba(139, 69, 19, 0.4);
+}
+
+/* Navigate button styling */
+.bm-navigate-btn {
+  background-color: rgba(75, 0, 130, 0.8) !important;
+  border-color: rgba(138, 43, 226, 0.5) !important;
+}
+
+.bm-navigate-btn:hover {
+  background-color: rgba(138, 43, 226, 0.9) !important;
+}
+
+/* Remove button styling */
+.bm-remove-btn {
+  background-color: rgba(178, 34, 34, 0.8) !important;
+  border-color: rgba(255, 99, 71, 0.5) !important;
+}
+
+.bm-remove-btn:hover {
+  background-color: rgba(220, 20, 60, 0.9) !important;
+}
+
+/* Button icons */
+.bm-toggle-icon,
+.bm-navigate-icon,
+.bm-remove-icon {
+  font-size: 16px;
+  line-height: 1;
+  display: block;
+}
+
+/* Loading state for template cards */
+.bm-template-card.loading {
+  opacity: 0.7;
+  pointer-events: none;
+  position: relative;
+}
+
+.bm-template-card.loading::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
+  animation: shimmer 2s infinite;
+  z-index: 1;
+}
+
+/* Thumbnail loading state */
+.bm-template-thumbnail.loading {
+  position: relative;
+  overflow: hidden;
+}
+
+.bm-template-thumbnail.loading::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(45deg,
+      rgba(100, 149, 237, 0.1) 25%,
+      transparent 25%,
+      transparent 50%,
+      rgba(100, 149, 237, 0.1) 50%,
+      rgba(100, 149, 237, 0.1) 75%,
+      transparent 75%);
+  background-size: 20px 20px;
+  animation: diagonalMove 1.5s linear infinite;
+  z-index: 2;
+}
+
+/* Thumbnail generation progress */
+.bm-thumbnail-progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #1061e5, #64b5f6);
+  border-radius: 0 0 4px 4px;
+  animation: progressBar 2s ease-in-out infinite;
+}
+
+/* Loading spinner for thumbnails */
+.bm-loading-spinner {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 24px;
+  height: 24px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top: 2px solid #1061e5;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  z-index: 3;
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes diagonalMove {
+  0% {
+    background-position: 0 0;
+  }
+
+  100% {
+    background-position: 20px 20px;
+  }
+}
+
+@keyframes progressBar {
+  0% {
+    width: 0%;
+  }
+
+  50% {
+    width: 70%;
+  }
+
+  100% {
+    width: 100%;
+  }
+}
+
+@keyframes spin {
+  0% {
+    transform: translate(-50%, -50%) rotate(0deg);
+  }
+
+  100% {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
+}
+
+/* Responsive template card adjustments */
+@media (max-width: 768px) {
+  .bm-template-card {
+    min-height: 180px;
+    padding: 10px;
+  }
+
+  .bm-template-thumbnail {
+    min-height: 80px;
+  }
+
+  .bm-thumbnail-canvas,
+  .bm-template-thumbnail .bm-thumbnail-placeholder {
+    max-width: 80px;
+    max-height: 80px;
+    width: 80px;
+    height: 80px;
+  }
+
+  .bm-template-controls {
+    gap: 4px;
+  }
+
+  .bm-template-controls button {
+    min-width: 28px !important;
+    min-height: 28px !important;
+    padding: 4px 6px !important;
+  }
+
+  .bm-toggle-icon,
+  .bm-navigate-icon,
+  .bm-remove-icon {
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .bm-template-card {
+    min-height: 160px;
+    padding: 8px;
+  }
+
+  .bm-template-thumbnail {
+    min-height: 70px;
+  }
+
+  .bm-thumbnail-canvas,
+  .bm-template-thumbnail .bm-thumbnail-placeholder {
+    max-width: 70px;
+    max-height: 70px;
+    width: 70px;
+    height: 70px;
+  }
+
+  .bm-template-name {
+    font-size: small;
+  }
+
+  .bm-template-stats,
+  .bm-template-coords {
+    font-size: xx-small;
+  }
+
+  .bm-template-controls {
+    gap: 3px;
+  }
+
+  .bm-template-controls button {
+    min-width: 26px !important;
+    min-height: 26px !important;
+    padding: 3px 5px !important;
+  }
+
+  .bm-toggle-icon,
+  .bm-navigate-icon,
+  .bm-remove-icon {
+    font-size: 12px;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .bm-template-card {
+    border-width: 3px;
+  }
+
+  .bm-template-card[data-enabled="true"] {
+    border-color: #4169e1;
+  }
+
+  .bm-template-card[data-enabled="false"] {
+    border-color: #696969;
+  }
+
+  .bm-template-controls button {
+    border-width: 2px !important;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+
+  /* Disable all animations and transitions */
+  .bm-template-card,
+  .bm-template-controls button,
+  .bm-thumbnail-canvas,
+  .bm-modal-backdrop,
+  .bm-modal-content,
+  .bm-gallery-content,
+  .bm-modal-close,
+  #bm-button-gallery,
+  #bm-overlay button {
+    transition: none !important;
+    animation: none !important;
+  }
+
+  /* Remove transform effects on hover */
+  .bm-template-card:hover,
+  .bm-template-controls button:hover,
+  .bm-modal-close:hover,
+  #bm-button-gallery:hover,
+  #bm-overlay button:hover {
+    transform: none !important;
+  }
+
+  /* Disable loading animations */
+  .bm-template-card.loading::after,
+  .bm-template-thumbnail.loading::before,
+  .bm-loading-spinner {
+    animation: none !important;
+  }
+
+  /* Disable modal entrance animations */
+  .bm-modal-backdrop.entering,
+  .bm-modal-backdrop.exiting,
+  .bm-gallery-backdrop.entering,
+  .bm-gallery-backdrop.exiting {
+    animation: none !important;
+  }
+
+  /* Disable card entrance animations */
+  .bm-template-card {
+    opacity: 1 !important;
+    transform: none !important;
+    animation: none !important;
+  }
+
+  /* Disable grid animation */
+  .bm-template-grid {
+    opacity: 1 !important;
+    animation: none !important;
+  }
+
+  /* Disable button ripple effects */
+  #bm-overlay button::before,
+  .bm-template-controls button::before {
+    display: none !important;
+  }
+
+  /* Ensure immediate state changes */
+  .bm-modal-backdrop.show {
+    opacity: 1 !important;
+    visibility: visible !important;
+  }
+
+  .bm-modal-backdrop.show .bm-modal-content,
+  .bm-gallery-backdrop.show .bm-gallery-content {
+    opacity: 1 !important;
+    transform: none !important;
   }
 }
