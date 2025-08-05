@@ -107,7 +107,7 @@ export default class TemplateGallery {
 
         // Get templates from templateManager
         const templates = this.templateManager.templatesArray || [];
-        const templateIds = new Set(templates.map(template => template.sortID + ' ' + template.authorID));
+        const templateIds = new Set(templates.map(template => this.getTemplateId(template)));
 
         // Update template count in header
         if (countElement) {
@@ -154,7 +154,7 @@ export default class TemplateGallery {
         // Efficient re-rendering: Add or update cards for current templates
         const newTemplates = [];
         templates.forEach(template => {
-            const templateId = template.sortID + ' ' + template.authorID;
+            const templateId = this.getTemplateId(template);
             const existingCard = this.templateCards.get(templateId);
 
             if (!existingCard) {
@@ -252,7 +252,7 @@ export default class TemplateGallery {
                 'style': `
                     display: flex;
                     align-items: center;
-                    gap: 10px;
+                    gap: 15px;
                     font-size: 0.9em;
                     color: rgba(255, 255, 255, 0.8);
                 `
@@ -261,6 +261,26 @@ export default class TemplateGallery {
                 'id': 'bm-gallery-count',
                 'textContent': '0 templates',
                 'style': 'margin: 0;'
+            }).buildElement()
+            .addButton({
+                'id': 'bm-gallery-help',
+                'textContent': '?',
+                'title': 'Gallery Help',
+                'style': `
+                    background-color: rgba(255, 255, 255, 0.2);
+                    border: 1px solid rgba(255, 255, 255, 0.3);
+                    border-radius: 50%;
+                    width: 24px;
+                    height: 24px;
+                    color: white;
+                    cursor: pointer;
+                    font-size: 0.9em;
+                    font-weight: bold;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    transition: all 0.2s ease;
+                `
             }).buildElement()
             .buildElement()
             .buildElement()
@@ -318,10 +338,19 @@ export default class TemplateGallery {
                     `
             }).buildElement()
             .addSmall({
-                'textContent': 'Load a template to start using the gallery',
+                'textContent': 'Load a template using the file upload button to start using the gallery',
+                'style': `
+                        margin: 0 0 10px 0;
+                        opacity: 0.8;
+                        line-height: 1.3;
+                    `
+            }).buildElement()
+            .addSmall({
+                'textContent': 'Templates will appear here with thumbnails and management controls',
                 'style': `
                         margin: 0;
-                        opacity: 0.8;
+                        opacity: 0.6;
+                        font-size: 0.9em;
                     `
             }).buildElement()
             .buildElement()
@@ -332,32 +361,107 @@ export default class TemplateGallery {
 
         // Store reference to the modal element for later use
         this.galleryElement = document.getElementById('bm-gallery-overlay');
+
+        // Add help button functionality
+        const helpButton = this.galleryElement.querySelector('#bm-gallery-help');
+        if (helpButton) {
+            // Add hover effect
+            helpButton.addEventListener('mouseenter', () => {
+                helpButton.style.backgroundColor = 'rgba(255, 255, 255, 0.3)';
+                helpButton.style.transform = 'scale(1.1)';
+            });
+            
+            helpButton.addEventListener('mouseleave', () => {
+                helpButton.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
+                helpButton.style.transform = 'scale(1)';
+            });
+
+            // Add click handler for help
+            helpButton.addEventListener('click', () => {
+                this.showGalleryHelp();
+            });
+
+            // Add comprehensive tooltip
+            this.addTooltip(helpButton, 'Click for gallery usage instructions and keyboard shortcuts', 'bottom');
+        }
     }
 
     /**
      * Generates a thumbnail for a template using createImageBitmap
      * Creates a 100x100px thumbnail with nearest-neighbor filtering for pixel art
+     * Handles thumbnail generation failures with placeholder icons
      * Requirements: 1.2
      * @param {Object} template - Template object from templateManager
      * @returns {Promise<HTMLCanvasElement|null>} Canvas element with thumbnail or null if failed
      */
     async generateThumbnail(template) {
-        const templateId = template.sortID + ' ' + template.authorID;
-
-        // Check cache first for performance optimization
-        if (this.thumbnailCache.has(templateId)) {
-            return this.thumbnailCache.get(templateId);
-        }
-
+        let templateId = 'unknown';
+        
         try {
-            // Ensure template has a file to generate thumbnail from
-            if (!template.file) {
-                console.warn(`Template ${templateId} has no file for thumbnail generation`);
+            // Validate template parameter
+            if (!template || typeof template !== 'object') {
+                console.error('Invalid template object provided to generateThumbnail:', template);
                 return null;
             }
 
-            // Create bitmap from template file
-            const sourceBitmap = await createImageBitmap(template.file);
+            // Extract template ID using helper method
+            templateId = this.getTemplateId(template);
+
+            // Check cache first for performance optimization
+            if (this.thumbnailCache.has(templateId)) {
+                const cachedThumbnail = this.thumbnailCache.get(templateId);
+                console.log(`Using cached thumbnail for template ${templateId}`);
+                return cachedThumbnail;
+            }
+
+            // Validate template has a file to generate thumbnail from
+            if (!template.file) {
+                console.warn(`Template ${templateId} has no file for thumbnail generation`);
+                this.thumbnailCache.set(templateId, null);
+                return null;
+            }
+
+            // Validate file is a valid image-like object
+            if (typeof template.file !== 'object' || !template.file) {
+                console.error(`Template ${templateId} file is not a valid object:`, typeof template.file);
+                this.thumbnailCache.set(templateId, null);
+                return null;
+            }
+
+            // Create bitmap from template file with error handling
+            let sourceBitmap;
+            try {
+                sourceBitmap = await createImageBitmap(template.file);
+            } catch (bitmapError) {
+                console.error(`Failed to create bitmap for template ${templateId}:`, bitmapError);
+                
+                // Provide specific error messages for common bitmap creation failures
+                if (bitmapError.name === 'InvalidStateError') {
+                    console.error(`Template ${templateId} file is in invalid state for bitmap creation`);
+                } else if (bitmapError.name === 'SecurityError') {
+                    console.error(`Security error creating bitmap for template ${templateId}`);
+                } else if (bitmapError.name === 'TypeError') {
+                    console.error(`Template ${templateId} file is not a valid image source`);
+                }
+                
+                this.thumbnailCache.set(templateId, null);
+                return null;
+            }
+
+            // Validate bitmap dimensions
+            if (!sourceBitmap.width || !sourceBitmap.height || 
+                sourceBitmap.width <= 0 || sourceBitmap.height <= 0) {
+                console.error(`Template ${templateId} has invalid bitmap dimensions: ${sourceBitmap.width}x${sourceBitmap.height}`);
+                sourceBitmap.close(); // Clean up bitmap
+                this.thumbnailCache.set(templateId, null);
+                return null;
+            }
+
+            // Check for reasonable size limits to prevent memory issues
+            const maxDimension = 10000; // Reasonable limit for source images
+            if (sourceBitmap.width > maxDimension || sourceBitmap.height > maxDimension) {
+                console.warn(`Template ${templateId} has very large dimensions: ${sourceBitmap.width}x${sourceBitmap.height}, may cause performance issues`);
+            }
 
             // Create thumbnail canvas with fixed 100x100px size
             const thumbnailCanvas = document.createElement('canvas');
@@ -365,10 +469,18 @@ export default class TemplateGallery {
             thumbnailCanvas.height = 100;
 
             const ctx = thumbnailCanvas.getContext('2d');
+            if (!ctx) {
+                console.error(`Failed to get 2D context for thumbnail canvas for template ${templateId}`);
+                sourceBitmap.close();
+                this.thumbnailCache.set(templateId, null);
+                return null;
+            }
 
             // Configure nearest-neighbor filtering for pixel art
             ctx.imageSmoothingEnabled = false;
-            ctx.imageSmoothingQuality = 'high';
+            if (ctx.imageSmoothingQuality) {
+                ctx.imageSmoothingQuality = 'high';
+            }
 
             // Calculate scaling to fit within 100x100 while maintaining aspect ratio
             const sourceWidth = sourceBitmap.width;
@@ -391,15 +503,34 @@ export default class TemplateGallery {
                 offsetY = 0;
             }
 
-            // Clear canvas with transparent background
-            ctx.clearRect(0, 0, 100, 100);
+            // Validate calculated dimensions
+            if (drawWidth <= 0 || drawHeight <= 0 || !isFinite(drawWidth) || !isFinite(drawHeight)) {
+                console.error(`Invalid calculated dimensions for template ${templateId}: ${drawWidth}x${drawHeight}`);
+                sourceBitmap.close();
+                this.thumbnailCache.set(templateId, null);
+                return null;
+            }
 
-            // Draw scaled image centered in canvas
-            ctx.drawImage(
-                sourceBitmap,
-                0, 0, sourceWidth, sourceHeight,  // Source rectangle
-                offsetX, offsetY, drawWidth, drawHeight  // Destination rectangle
-            );
+            try {
+                // Clear canvas with transparent background
+                ctx.clearRect(0, 0, 100, 100);
+
+                // Draw scaled image centered in canvas
+                ctx.drawImage(
+                    sourceBitmap,
+                    0, 0, sourceWidth, sourceHeight,  // Source rectangle
+                    offsetX, offsetY, drawWidth, drawHeight  // Destination rectangle
+                );
+
+            } catch (drawError) {
+                console.error(`Failed to draw image for template ${templateId}:`, drawError);
+                sourceBitmap.close();
+                this.thumbnailCache.set(templateId, null);
+                return null;
+            }
+
+            // Clean up source bitmap
+            sourceBitmap.close();
 
             // Cache the generated thumbnail
             this.thumbnailCache.set(templateId, thumbnailCanvas);
@@ -409,7 +540,21 @@ export default class TemplateGallery {
             return thumbnailCanvas;
 
         } catch (error) {
-            console.error(`Failed to generate thumbnail for template ${templateId}:`, error);
+            console.error(`Unexpected error generating thumbnail for template ${templateId}:`, error);
+
+            // Provide specific error context
+            let errorContext = 'Unknown error';
+            if (error.name === 'TypeError') {
+                errorContext = 'Type error - invalid data format';
+            } else if (error.name === 'ReferenceError') {
+                errorContext = 'Reference error - missing dependencies';
+            } else if (error.name === 'RangeError') {
+                errorContext = 'Range error - invalid dimensions';
+            } else if (error.message) {
+                errorContext = error.message;
+            }
+
+            console.error(`Thumbnail generation failed for ${templateId}: ${errorContext}`);
 
             // Cache null result to avoid repeated failed attempts
             this.thumbnailCache.set(templateId, null);
@@ -451,7 +596,8 @@ export default class TemplateGallery {
         // Generate thumbnails in parallel for better performance
         const thumbnailPromises = templates.map(template =>
             this.generateThumbnail(template).catch(error => {
-                console.warn(`Failed to preload thumbnail for template ${template.sortID} ${template.authorID}:`, error);
+                const templateId = this.getTemplateId(template);
+                console.warn(`Failed to preload thumbnail for template ${templateId}:`, error);
                 return null;
             })
         );
@@ -525,7 +671,7 @@ export default class TemplateGallery {
      */
     createTemplateCard(template) {
         // Extract template data with fallbacks
-        const templateId = template.sortID + ' ' + template.authorID;
+        const templateId = this.getTemplateId(template);
         const templateName = template.displayName || 'Unnamed Template';
         const templateCoords = template.coords || [0, 0, 0, 0];
         const pixelCount = template.pixelCount || 0;
@@ -849,7 +995,7 @@ export default class TemplateGallery {
         addHoverEffect(navigateBtn, '#1061e5');
         addHoverEffect(removeBtn, '#dc3545');
 
-        // Add event listeners (placeholder implementations for now)
+        // Add event listeners
         toggleBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             this.handleTemplateToggle(templateId);
@@ -864,6 +1010,22 @@ export default class TemplateGallery {
             e.stopPropagation();
             this.handleTemplateRemove(templateId);
         });
+
+        // Add comprehensive tooltips to control buttons
+        this.addTooltip(toggleBtn, 
+            isEnabled ? 'Disable template (hide from canvas)' : 'Enable template (show on canvas)', 
+            'top'
+        );
+        
+        this.addTooltip(navigateBtn, 
+            'Navigate to template location (set coordinates and close gallery)', 
+            'top'
+        );
+        
+        this.addTooltip(removeBtn, 
+            'Remove template permanently (cannot be undone)', 
+            'top'
+        );
 
         // Add card hover effect
         card.addEventListener('mouseenter', () => {
@@ -899,37 +1061,81 @@ export default class TemplateGallery {
      * @param {string} templateId - ID of template to toggle
      */
     handleTemplateToggle(templateId) {
+        // Find the template card for loading indicator
+        const card = this.templateCards.get(templateId);
+        const toggleBtn = card?.querySelector('.bm-toggle-btn');
+        
         try {
+            // Show loading indicator
+            if (toggleBtn) {
+                this.showButtonLoadingState(toggleBtn, 'Toggling...');
+            }
+
+            // Validate templateId parameter
+            if (!templateId || typeof templateId !== 'string') {
+                console.error('Invalid template ID provided to handleTemplateToggle:', templateId);
+                this.overlay.handleDisplayError('Invalid template ID provided');
+                return;
+            }
+
+            // Ensure templateManager is available
+            if (!this.templateManager) {
+                console.error('TemplateManager not available');
+                this.overlay.handleDisplayError('Template system not available');
+                return;
+            }
+
             // Ensure templatesJSON exists
             if (!this.templateManager.templatesJSON || 
                 !this.templateManager.templatesJSON.templates || 
                 !this.templateManager.templatesJSON.templates[templateId]) {
                 console.error(`Template ${templateId} not found in templatesJSON`);
-                this.overlay.handleDisplayError(`Template ${templateId} not found`);
+                this.overlay.handleDisplayError(`Template not found in system`);
                 return;
             }
 
+            // Get template information for better error messages
+            const template = this.templateManager.templatesJSON.templates[templateId];
+            const templateName = template.name || template.displayName || 'Unnamed Template';
+
             // Get current enabled state
-            const currentState = this.templateManager.templatesJSON.templates[templateId].enabled !== false;
+            const currentState = template.enabled !== false;
             const newState = !currentState;
 
             // Update enabled state in templatesJSON
-            this.templateManager.templatesJSON.templates[templateId].enabled = newState;
+            template.enabled = newState;
 
-            console.log(`Template ${templateId} ${newState ? 'enabled' : 'disabled'}`);
+            console.log(`Template ${templateId} (${templateName}) ${newState ? 'enabled' : 'disabled'}`);
 
             // Update visual state immediately
             this.updateTemplateCardVisualState(templateId, newState);
 
-            // Display status message
-            const templateName = this.templateManager.templatesJSON.templates[templateId].name || 'Template';
+            // Display success message with template name
             this.overlay.handleDisplayStatus(
-                `${templateName} ${newState ? 'enabled' : 'disabled'}`
+                `✓ ${templateName} ${newState ? 'enabled' : 'disabled'} successfully`
             );
 
         } catch (error) {
             console.error(`Error toggling template ${templateId}:`, error);
-            this.overlay.handleDisplayError(`Failed to toggle template: ${error.message}`);
+            
+            // Provide more specific error messages based on error type
+            let errorMessage = 'Failed to toggle template';
+            if (error.name === 'TypeError') {
+                errorMessage = 'Template data is corrupted or invalid';
+            } else if (error.message.includes('permission')) {
+                errorMessage = 'Permission denied when updating template';
+            } else if (error.message.includes('network')) {
+                errorMessage = 'Network error while updating template';
+            } else if (error.message) {
+                errorMessage = `Failed to toggle template: ${error.message}`;
+            }
+            
+            this.overlay.handleDisplayError(errorMessage);
+        } finally {
+            // Clear loading indicator
+            if (toggleBtn) {
+                this.clearButtonLoadingState(toggleBtn);
+            }
         }
     }
 
@@ -999,22 +1205,47 @@ export default class TemplateGallery {
      */
     handleTemplateRemove(templateId) {
         try {
-            // Get template information for confirmation dialog
-            const template = this.templateManager.templatesJSON?.templates?.[templateId];
-            if (!template) {
-                console.error(`Template ${templateId} not found`);
-                this.overlay.handleDisplayError(`Template ${templateId} not found`);
+            // Validate templateId parameter
+            if (!templateId || typeof templateId !== 'string') {
+                console.error('Invalid template ID provided to handleTemplateRemove:', templateId);
+                this.overlay.handleDisplayError('Invalid template ID provided');
                 return;
             }
 
-            const templateName = template.name || 'Unnamed Template';
+            // Ensure templateManager is available
+            if (!this.templateManager) {
+                console.error('TemplateManager not available');
+                this.overlay.handleDisplayError('Template system not available');
+                return;
+            }
+
+            // Get template information for confirmation dialog
+            const template = this.templateManager.templatesJSON?.templates?.[templateId];
+            if (!template) {
+                console.error(`Template ${templateId} not found in system`);
+                this.overlay.handleDisplayError('Template not found in system');
+                return;
+            }
+
+            const templateName = template.name || template.displayName || 'Unnamed Template';
 
             // Show confirmation dialog
             this.showRemoveConfirmationDialog(templateId, templateName);
 
         } catch (error) {
             console.error(`Error initiating template removal for ${templateId}:`, error);
-            this.overlay.handleDisplayError(`Failed to remove template: ${error.message}`);
+            
+            // Provide more specific error messages
+            let errorMessage = 'Failed to initiate template removal';
+            if (error.name === 'TypeError') {
+                errorMessage = 'Template data is corrupted or invalid';
+            } else if (error.message.includes('permission')) {
+                errorMessage = 'Permission denied when accessing template';
+            } else if (error.message) {
+                errorMessage = `Failed to remove template: ${error.message}`;
+            }
+            
+            this.overlay.handleDisplayError(errorMessage);
         }
     }
 
@@ -1086,12 +1317,13 @@ export default class TemplateGallery {
                 `
             }).buildElement()
             .addSmall({
-                'textContent': 'This action cannot be undone.',
+                'textContent': 'This action cannot be undone. The template will be permanently removed from your gallery.',
                 'style': `
                     color: rgba(255, 255, 255, 0.7);
                     font-style: italic;
                     display: block;
                     margin-bottom: 20px;
+                    line-height: 1.3;
                 `
             }).buildElement()
 
@@ -1194,6 +1426,36 @@ export default class TemplateGallery {
      */
     confirmTemplateRemoval(templateId, templateName) {
         try {
+            // Show loading indicator in status
+            this.overlay.handleDisplayStatus(`Removing template "${templateName}"...`);
+
+            // Validate parameters
+            if (!templateId || typeof templateId !== 'string') {
+                console.error('Invalid template ID provided to confirmTemplateRemoval:', templateId);
+                this.overlay.handleDisplayError('Invalid template ID provided');
+                return;
+            }
+
+            if (!templateName || typeof templateName !== 'string') {
+                console.error('Invalid template name provided to confirmTemplateRemoval:', templateName);
+                this.overlay.handleDisplayError('Invalid template name provided');
+                return;
+            }
+
+            // Ensure templateManager is available
+            if (!this.templateManager) {
+                console.error('TemplateManager not available');
+                this.overlay.handleDisplayError('Template system not available');
+                return;
+            }
+
+            // Verify template still exists before attempting removal
+            if (!this.templateManager.templatesJSON?.templates?.[templateId]) {
+                console.warn(`Template ${templateId} no longer exists, may have been removed already`);
+                this.overlay.handleDisplayStatus(`✓ Template "${templateName}" was already removed`);
+                return;
+            }
+
             // Remove template using TemplateManager
             // Note: The automatic refresh system will handle gallery updates
             const success = this.templateManager.deleteTemplate(templateId);
@@ -1202,18 +1464,34 @@ export default class TemplateGallery {
                 // Clear thumbnail cache for removed template
                 this.clearThumbnailCache(templateId);
 
-                // Show success message
-                this.overlay.handleDisplayStatus(`Template "${templateName}" removed successfully`);
+                // Show success message with checkmark
+                this.overlay.handleDisplayStatus(`✓ Template "${templateName}" removed successfully`);
 
-                console.log(`Successfully removed template ${templateId}`);
+                console.log(`Successfully removed template ${templateId} (${templateName})`);
             } else {
-                // Show error message
-                this.overlay.handleDisplayError(`Failed to remove template "${templateName}"`);
+                // Show error message with more context
+                console.error(`TemplateManager.deleteTemplate returned false for ${templateId}`);
+                this.overlay.handleDisplayError(`Failed to remove template "${templateName}" - operation was rejected`);
             }
 
         } catch (error) {
             console.error(`Error confirming template removal for ${templateId}:`, error);
-            this.overlay.handleDisplayError(`Failed to remove template: ${error.message}`);
+            
+            // Provide more specific error messages
+            let errorMessage = `Failed to remove template "${templateName}"`;
+            if (error.name === 'TypeError') {
+                errorMessage = `Template "${templateName}" data is corrupted`;
+            } else if (error.message.includes('permission')) {
+                errorMessage = `Permission denied when removing template "${templateName}"`;
+            } else if (error.message.includes('network')) {
+                errorMessage = `Network error while removing template "${templateName}"`;
+            } else if (error.message.includes('file')) {
+                errorMessage = `File system error while removing template "${templateName}"`;
+            } else if (error.message) {
+                errorMessage = `Failed to remove template "${templateName}": ${error.message}`;
+            }
+            
+            this.overlay.handleDisplayError(errorMessage);
         }
     }
 
@@ -1296,7 +1574,7 @@ export default class TemplateGallery {
         }
 
         // Update enabled state visual indicators
-        const templateIdKey = template.sortID + ' ' + template.authorID;
+        const templateIdKey = this.getTemplateId(template);
         let isEnabled = true;
         if (this.templateManager.templatesJSON &&
             this.templateManager.templatesJSON.templates &&
@@ -1323,7 +1601,7 @@ export default class TemplateGallery {
         
         // Append cards in the correct order based on templates array
         templates.forEach(template => {
-            const templateId = template.sortID + ' ' + template.authorID;
+            const templateId = this.getTemplateId(template);
             const card = this.templateCards.get(templateId);
             if (card && card.parentNode === templateGrid) {
                 fragment.appendChild(card);
@@ -1420,7 +1698,7 @@ export default class TemplateGallery {
         this.lastKnownTemplateState.clear();
         
         this.templateManager.templatesArray.forEach(template => {
-            const templateId = template.sortID + ' ' + template.authorID;
+            const templateId = this.getTemplateId(template);
             
             // Track key properties that affect display
             const state = {
@@ -1482,7 +1760,7 @@ export default class TemplateGallery {
 
         // Check for changes in existing templates
         this.templateManager.templatesArray.forEach(template => {
-            const templateId = template.sortID + ' ' + template.authorID;
+            const templateId = this.getTemplateId(template);
             const lastKnownState = this.lastKnownTemplateState.get(templateId);
             
             if (!lastKnownState) {
@@ -1536,7 +1814,7 @@ export default class TemplateGallery {
         // Check for removed templates
         this.lastKnownTemplateState.forEach((state, templateId) => {
             const stillExists = this.templateManager.templatesArray.some(template => 
-                (template.sortID + ' ' + template.authorID) === templateId
+                this.getTemplateId(template) === templateId
             );
             
             if (!stillExists) {
@@ -1629,44 +1907,461 @@ export default class TemplateGallery {
     }
 
     /**
+     * Generates a consistent template ID from a template object
+     * Handles different template object structures and provides fallbacks
+     * @param {Object} template - Template object
+     * @returns {string} Template ID in format "sortID authorID"
+     */
+    getTemplateId(template) {
+        if (!template || typeof template !== 'object') {
+            console.error('Invalid template object provided to getTemplateId:', template);
+            return 'invalid_' + Date.now();
+        }
+
+        // Check for standard properties first
+        if (template.sortID !== undefined && template.authorID !== undefined) {
+            return template.sortID + ' ' + template.authorID;
+        }
+        
+        // Fallback to single ID property
+        if (template.id) {
+            const idStr = template.id.toString();
+            // If it already contains a space, assume it's in the correct format
+            if (idStr.includes(' ')) {
+                return idStr;
+            }
+            // Otherwise, try to parse it or use as authorID with sortID 0
+            const parts = idStr.split('_');
+            if (parts.length >= 2) {
+                return parts[0] + ' ' + parts[1];
+            } else {
+                return '0 ' + idStr;
+            }
+        }
+        
+        // Generate fallback ID based on displayName or other properties
+        console.warn('Template missing ID properties, generating fallback ID:', template);
+        const fallbackId = template.displayName ? 
+            template.displayName.replace(/[^a-zA-Z0-9]/g, '').substring(0, 10) : 
+            'unknown_' + Date.now();
+        return '0 ' + fallbackId;
+    }
+
+    /**
+     * Shows loading state on a button with loading indicator
+     * Requirements: 3.1
+     * @param {HTMLElement} button - Button element to show loading state on
+     * @param {string} loadingText - Text to show during loading (optional)
+     */
+    showButtonLoadingState(button, loadingText = 'Loading...') {
+        if (!button) return;
+
+        // Store original content
+        if (!button.dataset.originalContent) {
+            button.dataset.originalContent = button.innerHTML;
+        }
+
+        // Add loading class and disable button
+        button.classList.add('bm-loading');
+        button.disabled = true;
+        button.style.opacity = '0.7';
+        button.style.cursor = 'not-allowed';
+
+        // Show loading spinner and text
+        button.innerHTML = `
+            <span class="bm-loading-spinner" style="
+                display: inline-block;
+                width: 12px;
+                height: 12px;
+                border: 2px solid rgba(255, 255, 255, 0.3);
+                border-radius: 50%;
+                border-top-color: white;
+                animation: bm-spin 1s ease-in-out infinite;
+                margin-right: 5px;
+            "></span>
+            <span style="font-size: 0.8em;">${loadingText}</span>
+        `;
+
+        // Add CSS animation if not already present
+        if (!document.getElementById('bm-loading-styles')) {
+            const style = document.createElement('style');
+            style.id = 'bm-loading-styles';
+            style.textContent = `
+                @keyframes bm-spin {
+                    to { transform: rotate(360deg); }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+    }
+
+    /**
+     * Clears loading state from a button and restores original content
+     * Requirements: 3.1
+     * @param {HTMLElement} button - Button element to clear loading state from
+     */
+    clearButtonLoadingState(button) {
+        if (!button) return;
+
+        // Remove loading class and re-enable button
+        button.classList.remove('bm-loading');
+        button.disabled = false;
+        button.style.opacity = '';
+        button.style.cursor = '';
+
+        // Restore original content
+        if (button.dataset.originalContent) {
+            button.innerHTML = button.dataset.originalContent;
+            delete button.dataset.originalContent;
+        }
+    }
+
+    /**
+     * Adds comprehensive tooltips and help text for gallery controls
+     * Requirements: 3.1
+     * @param {HTMLElement} element - Element to add tooltip to
+     * @param {string} tooltipText - Tooltip text to display
+     * @param {string} position - Tooltip position ('top', 'bottom', 'left', 'right')
+     */
+    addTooltip(element, tooltipText, position = 'top') {
+        if (!element || !tooltipText) return;
+
+        // Set basic title attribute as fallback
+        element.title = tooltipText;
+
+        // Create enhanced tooltip on hover
+        let tooltip = null;
+
+        const showTooltip = (e) => {
+            // Remove any existing tooltip
+            if (tooltip) {
+                tooltip.remove();
+            }
+
+            // Create tooltip element
+            tooltip = document.createElement('div');
+            tooltip.className = 'bm-tooltip';
+            tooltip.textContent = tooltipText;
+            tooltip.style.cssText = `
+                position: absolute;
+                background-color: rgba(0, 0, 0, 0.9);
+                color: white;
+                padding: 8px 12px;
+                border-radius: 4px;
+                font-size: 0.8em;
+                font-family: 'Roboto Mono', monospace;
+                white-space: nowrap;
+                z-index: 10000;
+                pointer-events: none;
+                opacity: 0;
+                transition: opacity 0.2s ease;
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            `;
+
+            document.body.appendChild(tooltip);
+
+            // Position tooltip
+            const rect = element.getBoundingClientRect();
+            const tooltipRect = tooltip.getBoundingClientRect();
+
+            let left, top;
+
+            switch (position) {
+                case 'bottom':
+                    left = rect.left + (rect.width - tooltipRect.width) / 2;
+                    top = rect.bottom + 8;
+                    break;
+                case 'left':
+                    left = rect.left - tooltipRect.width - 8;
+                    top = rect.top + (rect.height - tooltipRect.height) / 2;
+                    break;
+                case 'right':
+                    left = rect.right + 8;
+                    top = rect.top + (rect.height - tooltipRect.height) / 2;
+                    break;
+                default: // 'top'
+                    left = rect.left + (rect.width - tooltipRect.width) / 2;
+                    top = rect.top - tooltipRect.height - 8;
+                    break;
+            }
+
+            // Ensure tooltip stays within viewport
+            left = Math.max(8, Math.min(left, window.innerWidth - tooltipRect.width - 8));
+            top = Math.max(8, Math.min(top, window.innerHeight - tooltipRect.height - 8));
+
+            tooltip.style.left = left + 'px';
+            tooltip.style.top = top + 'px';
+
+            // Fade in tooltip
+            setTimeout(() => {
+                if (tooltip) {
+                    tooltip.style.opacity = '1';
+                }
+            }, 10);
+        };
+
+        const hideTooltip = () => {
+            if (tooltip) {
+                tooltip.style.opacity = '0';
+                setTimeout(() => {
+                    if (tooltip && tooltip.parentNode) {
+                        tooltip.parentNode.removeChild(tooltip);
+                    }
+                    tooltip = null;
+                }, 200);
+            }
+        };
+
+        // Add event listeners
+        element.addEventListener('mouseenter', showTooltip);
+        element.addEventListener('mouseleave', hideTooltip);
+        element.addEventListener('focus', showTooltip);
+        element.addEventListener('blur', hideTooltip);
+
+        // Clean up on element removal
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                mutation.removedNodes.forEach((node) => {
+                    if (node === element || (node.contains && node.contains(element))) {
+                        hideTooltip();
+                        observer.disconnect();
+                    }
+                });
+            });
+        });
+
+        observer.observe(document.body, { childList: true, subtree: true });
+    }
+
+    /**
+     * Shows comprehensive help dialog for gallery usage
+     * Requirements: 3.1
+     */
+    showGalleryHelp() {
+        const helpContent = `
+            <div style="text-align: left; line-height: 1.5;">
+                <h3 style="margin: 0 0 15px 0; color: #1061e5; font-size: 1.2em;">Template Gallery Help</h3>
+                
+                <div style="margin-bottom: 20px;">
+                    <h4 style="margin: 0 0 8px 0; color: rgba(255, 255, 255, 0.9); font-size: 1em;">Template Controls:</h4>
+                    <ul style="margin: 0; padding-left: 20px; color: rgba(255, 255, 255, 0.8);">
+                        <li style="margin-bottom: 5px;"><strong>👁 Toggle:</strong> Enable/disable template visibility on canvas</li>
+                        <li style="margin-bottom: 5px;"><strong>📍 Navigate:</strong> Set coordinates to template location and close gallery</li>
+                        <li style="margin-bottom: 5px;"><strong>🗑 Remove:</strong> Permanently delete template (requires confirmation)</li>
+                    </ul>
+                </div>
+
+                <div style="margin-bottom: 20px;">
+                    <h4 style="margin: 0 0 8px 0; color: rgba(255, 255, 255, 0.9); font-size: 1em;">Keyboard Shortcuts:</h4>
+                    <ul style="margin: 0; padding-left: 20px; color: rgba(255, 255, 255, 0.8);">
+                        <li style="margin-bottom: 5px;"><strong>ESC:</strong> Close gallery</li>
+                        <li style="margin-bottom: 5px;"><strong>Click outside:</strong> Close gallery</li>
+                    </ul>
+                </div>
+
+                <div style="margin-bottom: 20px;">
+                    <h4 style="margin: 0 0 8px 0; color: rgba(255, 255, 255, 0.9); font-size: 1em;">Template Information:</h4>
+                    <ul style="margin: 0; padding-left: 20px; color: rgba(255, 255, 255, 0.8);">
+                        <li style="margin-bottom: 5px;">Each card shows template name, dimensions, and pixel count</li>
+                        <li style="margin-bottom: 5px;">Coordinates display current template position</li>
+                        <li style="margin-bottom: 5px;">Thumbnails are generated automatically for visual reference</li>
+                        <li style="margin-bottom: 5px;">Active templates have blue borders, inactive have gray borders</li>
+                    </ul>
+                </div>
+
+                <div style="margin-bottom: 15px;">
+                    <h4 style="margin: 0 0 8px 0; color: rgba(255, 255, 255, 0.9); font-size: 1em;">Tips:</h4>
+                    <ul style="margin: 0; padding-left: 20px; color: rgba(255, 255, 255, 0.8);">
+                        <li style="margin-bottom: 5px;">Gallery updates automatically when templates are added or removed</li>
+                        <li style="margin-bottom: 5px;">Hover over buttons for detailed tooltips</li>
+                        <li style="margin-bottom: 5px;">Template removal requires confirmation to prevent accidents</li>
+                    </ul>
+                </div>
+            </div>
+        `;
+
+        // Create help modal
+        this.overlay.createModal(
+            {
+                'id': 'bm-gallery-help-modal',
+                'className': 'bm-modal-backdrop bm-gallery-help-backdrop'
+            },
+            {
+                'id': 'bm-gallery-help-content',
+                'className': 'bm-modal-content bm-gallery-help-content',
+                'style': `
+                    background-color: rgba(21, 48, 99, 0.95);
+                    color: white;
+                    border-radius: 8px;
+                    padding: 30px;
+                    max-width: 600px;
+                    width: 90vw;
+                    max-height: 80vh;
+                    overflow-y: auto;
+                    font-family: 'Roboto Mono', 'Courier New', 'Monaco', 'DejaVu Sans Mono', monospace, 'Arial';
+                    letter-spacing: 0.05em;
+                    border: 2px solid #1061e5;
+                `
+            },
+            () => {
+                // Modal closed
+                console.log('Gallery help modal closed');
+            }
+        )
+            .addModalCloseButton().buildElement()
+            .addDiv({
+                'innerHTML': helpContent,
+                'style': 'margin-top: 10px;'
+            }).buildElement()
+            .addDiv({
+                'style': `
+                    display: flex;
+                    justify-content: center;
+                    margin-top: 25px;
+                    padding-top: 20px;
+                    border-top: 1px solid rgba(255, 255, 255, 0.2);
+                `
+            })
+            .addButton({
+                'textContent': 'Got it!',
+                'style': `
+                    background-color: #1061e5;
+                    border: 1px solid #1061e5;
+                    border-radius: 4px;
+                    padding: 10px 25px;
+                    color: white;
+                    cursor: pointer;
+                    font-size: 1em;
+                    font-family: inherit;
+                    transition: all 0.2s ease;
+                    font-weight: bold;
+                `
+            }).buildElement()
+            .buildElement()
+            .buildOverlay(document.body);
+
+        // Add button functionality
+        const helpModal = document.getElementById('bm-gallery-help-modal');
+        const gotItBtn = helpModal.querySelector('button:last-child');
+        
+        if (gotItBtn) {
+            gotItBtn.addEventListener('click', () => {
+                this.overlay.closeModal(helpModal);
+            });
+
+            // Add hover effect
+            gotItBtn.addEventListener('mouseenter', () => {
+                gotItBtn.style.backgroundColor = '#0d5cb8';
+                gotItBtn.style.transform = 'translateY(-1px)';
+            });
+
+            gotItBtn.addEventListener('mouseleave', () => {
+                gotItBtn.style.backgroundColor = '#1061e5';
+                gotItBtn.style.transform = 'translateY(0)';
+            });
+        }
+    }
+
+    /**
      * Handles template navigation action
      * Handles template navigation functionality by setting coordinates in overlay
      * Sets the template coordinates in the main overlay coordinate input fields
-     * Requirements: 4.3
+     * Requirements: 4.1, 4.2, 4.3, 4.4
      * @param {string} templateId - ID of template to navigate to
      */
     handleTemplateNavigate(templateId) {
-        console.log(`Setting coordinates for template: ${templateId}`);
-
-        // Find the template by ID
-        const template = this.templateManager.templatesArray?.find(t => 
-            (t.sortID + ' ' + t.authorID) === templateId
-        );
-
-        if (!template) {
-            console.error(`Template not found: ${templateId}`);
-            this.overlay.handleDisplayError('Template not found!');
-            return;
-        }
-
-        // Validate template coordinates
-        if (!template.coords || template.coords.length !== 4) {
-            console.error(`Invalid coordinates for template: ${templateId}`, template.coords);
-            this.overlay.handleDisplayError('Template coordinates are invalid!');
-            return;
-        }
-
-        const [tileX, tileY, pixelX, pixelY] = template.coords;
-
-        // Validate coordinate ranges
-        if (tileX < 0 || tileX > 2047 || tileY < 0 || tileY > 2047 ||
-            pixelX < 0 || pixelX > 999 || pixelY < 0 || pixelY > 999) {
-            console.error(`Coordinates out of range for template: ${templateId}`, template.coords);
-            this.overlay.handleDisplayError('Template coordinates are out of valid range!');
-            return;
-        }
-
         try {
+            console.log(`Setting coordinates for template: ${templateId}`);
+
+            // Validate templateId parameter
+            if (!templateId || typeof templateId !== 'string') {
+                console.error('Invalid template ID provided to handleTemplateNavigate:', templateId);
+                this.overlay.handleDisplayError('Invalid template ID provided');
+                return;
+            }
+
+            // Ensure templateManager is available
+            if (!this.templateManager) {
+                console.error('TemplateManager not available');
+                this.overlay.handleDisplayError('Template system not available');
+                return;
+            }
+
+            // Ensure templatesArray exists
+            if (!this.templateManager.templatesArray || !Array.isArray(this.templateManager.templatesArray)) {
+                console.error('Templates array not available or invalid');
+                this.overlay.handleDisplayError('Template data not available');
+                return;
+            }
+
+            // Find the template by ID
+            const template = this.templateManager.templatesArray.find(t => 
+                this.getTemplateId(t) === templateId
+            );
+
+            if (!template) {
+                console.error(`Template not found in templatesArray: ${templateId}`);
+                this.overlay.handleDisplayError('Template not found in system');
+                return;
+            }
+
+            const templateName = template.displayName || template.name || 'Unnamed Template';
+
+            // Validate template coordinates exist
+            if (!template.coords) {
+                console.error(`Template ${templateId} (${templateName}) has no coordinates`);
+                this.overlay.handleDisplayError(`Template "${templateName}" has no coordinates set`);
+                return;
+            }
+
+            // Validate coordinates array structure
+            if (!Array.isArray(template.coords) || template.coords.length !== 4) {
+                console.error(`Invalid coordinates structure for template ${templateId} (${templateName}):`, template.coords);
+                this.overlay.handleDisplayError(`Template "${templateName}" has invalid coordinate format`);
+                return;
+            }
+
+            const [tileX, tileY, pixelX, pixelY] = template.coords;
+
+            // Validate coordinate values are numbers
+            if (!Number.isInteger(tileX) || !Number.isInteger(tileY) || 
+                !Number.isInteger(pixelX) || !Number.isInteger(pixelY)) {
+                console.error(`Non-integer coordinates for template ${templateId} (${templateName}):`, template.coords);
+                this.overlay.handleDisplayError(`Template "${templateName}" has invalid coordinate values`);
+                return;
+            }
+
+            // Validate coordinate ranges (Blue Marble canvas limits)
+            const coordinateErrors = [];
+            if (tileX < 0 || tileX > 2047) coordinateErrors.push(`Tile X (${tileX}) out of range 0-2047`);
+            if (tileY < 0 || tileY > 2047) coordinateErrors.push(`Tile Y (${tileY}) out of range 0-2047`);
+            if (pixelX < 0 || pixelX > 999) coordinateErrors.push(`Pixel X (${pixelX}) out of range 0-999`);
+            if (pixelY < 0 || pixelY > 999) coordinateErrors.push(`Pixel Y (${pixelY}) out of range 0-999`);
+
+            if (coordinateErrors.length > 0) {
+                console.error(`Coordinates out of range for template ${templateId} (${templateName}):`, coordinateErrors);
+                this.overlay.handleDisplayError(`Template "${templateName}" coordinates are out of valid range`);
+                return;
+            }
+
+            // Ensure overlay is available for coordinate setting
+            if (!this.overlay) {
+                console.error('Overlay not available for coordinate setting');
+                this.overlay.handleDisplayError('Interface not available for coordinate setting');
+                return;
+            }
+
+            // Verify coordinate input fields exist before setting
+            const inputFields = ['bm-input-tx', 'bm-input-ty', 'bm-input-px', 'bm-input-py'];
+            const missingFields = inputFields.filter(fieldId => !document.getElementById(fieldId));
+            
+            if (missingFields.length > 0) {
+                console.error('Coordinate input fields not found:', missingFields);
+                this.overlay.handleDisplayError('Coordinate input fields not available');
+                return;
+            }
+
             // Set coordinates in the main overlay input fields
             this.overlay.updateInnerHTML('bm-input-tx', tileX.toString());
             this.overlay.updateInnerHTML('bm-input-ty', tileY.toString());
@@ -1675,12 +2370,17 @@ export default class TemplateGallery {
 
             // Update the API manager coordinates if available
             if (this.templateManager.apiManager) {
-                this.templateManager.apiManager.coordsTilePixel = [tileX, tileY, pixelX, pixelY];
+                try {
+                    this.templateManager.apiManager.coordsTilePixel = [tileX, tileY, pixelX, pixelY];
+                    console.log('Updated API manager coordinates:', [tileX, tileY, pixelX, pixelY]);
+                } catch (apiError) {
+                    console.warn('Failed to update API manager coordinates:', apiError);
+                    // Don't fail the entire operation for this
+                }
             }
 
-            // Display success message
-            const templateName = template.displayName || 'Unnamed Template';
-            this.overlay.handleDisplayStatus(`Coordinates set to template "${templateName}" at Tile: ${tileX},${tileY} Pixel: ${pixelX},${pixelY}`);
+            // Display success message with checkmark
+            this.overlay.handleDisplayStatus(`✓ Navigated to template "${templateName}" at Tile: ${tileX},${tileY} Pixel: ${pixelX},${pixelY}`);
 
             console.log(`Successfully set coordinates for template "${templateName}":`, template.coords);
 
@@ -1689,7 +2389,20 @@ export default class TemplateGallery {
 
         } catch (error) {
             console.error(`Error setting coordinates for template ${templateId}:`, error);
-            this.overlay.handleDisplayError('Failed to set template coordinates!');
+            
+            // Provide more specific error messages
+            let errorMessage = 'Failed to navigate to template';
+            if (error.name === 'TypeError') {
+                errorMessage = 'Template data is corrupted or invalid';
+            } else if (error.message.includes('permission')) {
+                errorMessage = 'Permission denied when accessing template coordinates';
+            } else if (error.message.includes('DOM')) {
+                errorMessage = 'Interface error when setting coordinates';
+            } else if (error.message) {
+                errorMessage = `Failed to navigate to template: ${error.message}`;
+            }
+            
+            this.overlay.handleDisplayError(errorMessage);
         }
     }
 
