@@ -34,6 +34,25 @@ export default class TemplateGallery {
         this.showRemoveConfirmationDialog = this.showRemoveConfirmationDialog.bind(this);
         this.confirmTemplateRemoval = this.confirmTemplateRemoval.bind(this);
         this.removeTemplateCardFromDisplay = this.removeTemplateCardFromDisplay.bind(this);
+        this.updateExistingTemplateCard = this.updateExistingTemplateCard.bind(this);
+        this.reorderTemplateCards = this.reorderTemplateCards.bind(this);
+        this.setupAutomaticRefresh = this.setupAutomaticRefresh.bind(this);
+        this.setupStateSynchronization = this.setupStateSynchronization.bind(this);
+        this.syncTemplateStates = this.syncTemplateStates.bind(this);
+        this.detectTemplateChanges = this.detectTemplateChanges.bind(this);
+        this.updateTemplateState = this.updateTemplateState.bind(this);
+        this.cleanup = this.cleanup.bind(this);
+
+        // State synchronization tracking
+        this.lastKnownTemplateState = new Map(); // Track template states for change detection
+        this.syncInterval = null; // Interval for periodic state synchronization
+        this.isDestroyed = false; // Flag to prevent operations after cleanup
+
+        // Set up automatic refresh when templates are added/removed
+        this.setupAutomaticRefresh();
+        
+        // Set up state synchronization system
+        this.setupStateSynchronization();
     }
 
     /**
@@ -56,10 +75,14 @@ export default class TemplateGallery {
 
     /**
      * Hides the template gallery modal
-     * Requirements: 5.1, 5.2, 5.3
+     * Implements proper cleanup when gallery is closed
+     * Requirements: 5.1, 5.2, 5.3, 3.4
      */
     hide() {
         if (!this.isVisible || !this.galleryElement) return;
+
+        // Perform cleanup before hiding
+        this.cleanup();
 
         // Use the Overlay class closeModal method for proper cleanup
         this.overlay.closeModal(this.galleryElement);
@@ -71,6 +94,8 @@ export default class TemplateGallery {
     /**
      * Refreshes the template gallery with current templates
      * Updates the display to reflect current state of templateManager
+     * Implements efficient re-rendering to avoid unnecessary DOM updates
+     * Requirements: 1.4, 3.4
      */
     refresh() {
         if (!this.galleryElement) return;
@@ -80,12 +105,9 @@ export default class TemplateGallery {
         const emptyState = contentArea.querySelector('#bm-gallery-empty');
         const countElement = this.galleryElement.querySelector('#bm-gallery-count');
 
-        // Clear existing cards
-        templateGrid.innerHTML = '';
-        this.templateCards.clear();
-
         // Get templates from templateManager
         const templates = this.templateManager.templatesArray || [];
+        const templateIds = new Set(templates.map(template => template.sortID + ' ' + template.authorID));
 
         // Update template count in header
         if (countElement) {
@@ -93,24 +115,73 @@ export default class TemplateGallery {
             countElement.textContent = count === 1 ? '1 template' : `${count} templates`;
         }
 
+        // Handle empty state display
         if (templates.length === 0) {
             // Show empty state
             templateGrid.style.display = 'none';
             emptyState.style.display = 'block';
-        } else {
-            // Hide empty state and show templates
-            emptyState.style.display = 'none';
-            templateGrid.style.display = 'grid';
-
-            // Preload thumbnails for better performance
-            this.preloadThumbnails(templates);
-
-            // Create cards for each template
-            templates.forEach(template => {
-                const card = this.createTemplateCard(template);
-                templateGrid.appendChild(card);
-            });
+            
+            // Clear all cached cards since there are no templates
+            this.templateCards.clear();
+            templateGrid.innerHTML = '';
+            
+            console.log('Gallery refresh: Showing empty state');
+            return;
         }
+
+        // Hide empty state and show templates
+        emptyState.style.display = 'none';
+        templateGrid.style.display = 'grid';
+
+        // Efficient re-rendering: Remove cards for templates that no longer exist
+        const cardsToRemove = [];
+        this.templateCards.forEach((card, templateId) => {
+            if (!templateIds.has(templateId)) {
+                cardsToRemove.push(templateId);
+                // Remove card from DOM
+                if (card.parentNode) {
+                    card.parentNode.removeChild(card);
+                }
+            }
+        });
+
+        // Clean up cache for removed templates
+        cardsToRemove.forEach(templateId => {
+            this.templateCards.delete(templateId);
+            this.clearThumbnailCache(templateId);
+        });
+
+        // Efficient re-rendering: Add or update cards for current templates
+        const newTemplates = [];
+        templates.forEach(template => {
+            const templateId = template.sortID + ' ' + template.authorID;
+            const existingCard = this.templateCards.get(templateId);
+
+            if (!existingCard) {
+                // New template - needs to be added
+                newTemplates.push(template);
+            } else {
+                // Existing template - update visual state if needed
+                this.updateExistingTemplateCard(templateId, template);
+            }
+        });
+
+        // Preload thumbnails for new templates only
+        if (newTemplates.length > 0) {
+            this.preloadThumbnails(newTemplates);
+            console.log(`Gallery refresh: Adding ${newTemplates.length} new template cards`);
+        }
+
+        // Create and append cards for new templates
+        newTemplates.forEach(template => {
+            const card = this.createTemplateCard(template);
+            templateGrid.appendChild(card);
+        });
+
+        // Ensure proper grid order by sorting existing cards
+        this.reorderTemplateCards(templates);
+
+        console.log(`Gallery refresh completed: ${templates.length} templates, ${newTemplates.length} new, ${cardsToRemove.length} removed`);
     }
 
     /**
@@ -1124,17 +1195,12 @@ export default class TemplateGallery {
     confirmTemplateRemoval(templateId, templateName) {
         try {
             // Remove template using TemplateManager
+            // Note: The automatic refresh system will handle gallery updates
             const success = this.templateManager.deleteTemplate(templateId);
 
             if (success) {
                 // Clear thumbnail cache for removed template
                 this.clearThumbnailCache(templateId);
-
-                // Remove template card from gallery display
-                this.removeTemplateCardFromDisplay(templateId);
-
-                // Refresh gallery to update counts and empty state
-                this.refresh();
 
                 // Show success message
                 this.overlay.handleDisplayStatus(`Template "${templateName}" removed successfully`);
@@ -1178,6 +1244,388 @@ export default class TemplateGallery {
 
             console.log(`Removed template card ${templateId} from display`);
         }
+    }
+
+    /**
+     * Updates an existing template card with current template data
+     * Efficiently updates card information without recreating the entire card
+     * @param {string} templateId - ID of template to update
+     * @param {Object} template - Updated template object
+     */
+    updateExistingTemplateCard(templateId, template) {
+        const card = this.templateCards.get(templateId);
+        if (!card) return;
+
+        // Update template name if changed
+        const nameElement = card.querySelector('.bm-template-name');
+        if (nameElement && template.displayName) {
+            const newName = template.displayName;
+            if (nameElement.textContent !== newName) {
+                nameElement.textContent = newName;
+            }
+        }
+
+        // Update template stats if changed
+        const dimensionsSpan = card.querySelector('.bm-dimensions');
+        const pixelCountSpan = card.querySelector('.bm-pixel-count');
+        
+        if (dimensionsSpan && pixelCountSpan) {
+            let dimensions = 'Unknown';
+            if (template.file && template.file.width && template.file.height) {
+                dimensions = `${template.file.width}×${template.file.height}`;
+            }
+            
+            const pixelCountFormatted = new Intl.NumberFormat().format(template.pixelCount || 0);
+            const newPixelText = `${pixelCountFormatted} pixels`;
+            
+            if (dimensionsSpan.textContent !== dimensions) {
+                dimensionsSpan.textContent = dimensions;
+            }
+            if (pixelCountSpan.textContent !== newPixelText) {
+                pixelCountSpan.textContent = newPixelText;
+            }
+        }
+
+        // Update coordinates if changed
+        const coordsElement = card.querySelector('.bm-template-coords');
+        if (coordsElement && template.coords) {
+            const newCoordsDisplay = `Tile: ${template.coords[0]},${template.coords[1]} Pixel: ${template.coords[2]},${template.coords[3]}`;
+            if (coordsElement.textContent !== newCoordsDisplay) {
+                coordsElement.textContent = newCoordsDisplay;
+            }
+        }
+
+        // Update enabled state visual indicators
+        const templateIdKey = template.sortID + ' ' + template.authorID;
+        let isEnabled = true;
+        if (this.templateManager.templatesJSON &&
+            this.templateManager.templatesJSON.templates &&
+            this.templateManager.templatesJSON.templates[templateIdKey]) {
+            isEnabled = this.templateManager.templatesJSON.templates[templateIdKey].enabled !== false;
+        }
+
+        this.updateTemplateCardVisualState(templateId, isEnabled);
+    }
+
+    /**
+     * Reorders template cards in the grid to match the current template array order
+     * Ensures visual consistency with template priority/sort order
+     * @param {Array} templates - Current templates array in desired order
+     */
+    reorderTemplateCards(templates) {
+        if (!this.galleryElement) return;
+
+        const templateGrid = this.galleryElement.querySelector('.bm-template-grid');
+        if (!templateGrid) return;
+
+        // Create a document fragment to efficiently reorder elements
+        const fragment = document.createDocumentFragment();
+        
+        // Append cards in the correct order based on templates array
+        templates.forEach(template => {
+            const templateId = template.sortID + ' ' + template.authorID;
+            const card = this.templateCards.get(templateId);
+            if (card && card.parentNode === templateGrid) {
+                fragment.appendChild(card);
+            }
+        });
+
+        // Append the reordered cards back to the grid
+        templateGrid.appendChild(fragment);
+    }
+
+    /**
+     * Sets up automatic refresh when templates are added or removed
+     * Hooks into templateManager operations to trigger gallery updates
+     * Requirements: 1.4, 3.4
+     */
+    setupAutomaticRefresh() {
+        // Store original methods to wrap them
+        const originalCreateTemplate = this.templateManager.createTemplate.bind(this.templateManager);
+        const originalDeleteTemplate = this.templateManager.deleteTemplate.bind(this.templateManager);
+
+        // Wrap createTemplate to trigger refresh after template creation
+        this.templateManager.createTemplate = async (...args) => {
+            const result = await originalCreateTemplate(...args);
+            
+            // Trigger refresh if gallery is visible
+            if (this.isVisible) {
+                // Small delay to ensure template is fully processed
+                setTimeout(() => {
+                    this.refresh();
+                    console.log('Gallery auto-refreshed after template creation');
+                }, 100);
+            }
+            
+            return result;
+        };
+
+        // Wrap deleteTemplate to trigger refresh after template deletion
+        this.templateManager.deleteTemplate = (...args) => {
+            const result = originalDeleteTemplate(...args);
+            
+            // Trigger refresh if gallery is visible and deletion was successful
+            if (this.isVisible && result) {
+                // Small delay to ensure template is fully removed
+                setTimeout(() => {
+                    this.refresh();
+                    console.log('Gallery auto-refreshed after template deletion');
+                }, 100);
+            }
+            
+            return result;
+        };
+
+        console.log('Automatic gallery refresh system initialized');
+    }
+
+    /**
+     * Forces a manual refresh of the gallery
+     * Useful for external calls when template state changes outside of normal operations
+     * Requirements: 1.4, 3.4
+     */
+    forceRefresh() {
+        if (this.isVisible) {
+            this.refresh();
+            console.log('Gallery manually refreshed');
+        }
+    }
+
+    /**
+     * Sets up state synchronization system to keep gallery in sync with TemplateManager
+     * Monitors template state changes and updates gallery accordingly
+     * Requirements: 2.4, 3.4
+     */
+    setupStateSynchronization() {
+        // Initialize template state tracking
+        this.updateTemplateStateTracking();
+
+        // Set up periodic synchronization check (every 2 seconds when visible)
+        this.syncInterval = setInterval(() => {
+            if (this.isVisible && !this.isDestroyed) {
+                this.syncTemplateStates();
+            }
+        }, 2000);
+
+        console.log('State synchronization system initialized');
+    }
+
+    /**
+     * Updates the template state tracking map with current template states
+     * Used to detect changes in template properties
+     */
+    updateTemplateStateTracking() {
+        if (!this.templateManager.templatesArray) return;
+
+        this.lastKnownTemplateState.clear();
+        
+        this.templateManager.templatesArray.forEach(template => {
+            const templateId = template.sortID + ' ' + template.authorID;
+            
+            // Track key properties that affect display
+            const state = {
+                displayName: template.displayName,
+                coords: template.coords ? [...template.coords] : null,
+                pixelCount: template.pixelCount,
+                enabled: this.getTemplateEnabledState(templateId),
+                lastModified: Date.now()
+            };
+            
+            this.lastKnownTemplateState.set(templateId, state);
+        });
+    }
+
+    /**
+     * Gets the enabled state of a template from templatesJSON
+     * @param {string} templateId - Template ID to check
+     * @returns {boolean} True if template is enabled
+     */
+    getTemplateEnabledState(templateId) {
+        if (this.templateManager.templatesJSON &&
+            this.templateManager.templatesJSON.templates &&
+            this.templateManager.templatesJSON.templates[templateId]) {
+            return this.templateManager.templatesJSON.templates[templateId].enabled !== false;
+        }
+        return true; // Default to enabled
+    }
+
+    /**
+     * Synchronizes template states between TemplateManager and gallery display
+     * Detects changes and updates gallery cards accordingly
+     * Requirements: 2.4, 3.4
+     */
+    syncTemplateStates() {
+        if (this.isDestroyed || !this.isVisible) return;
+
+        const changes = this.detectTemplateChanges();
+        
+        if (changes.length > 0) {
+            console.log(`Detected ${changes.length} template state changes, updating gallery`);
+            
+            changes.forEach(change => {
+                this.updateTemplateState(change);
+            });
+            
+            // Update state tracking with new values
+            this.updateTemplateStateTracking();
+        }
+    }
+
+    /**
+     * Detects changes in template states by comparing current state with last known state
+     * @returns {Array} Array of change objects describing what changed
+     */
+    detectTemplateChanges() {
+        const changes = [];
+        
+        if (!this.templateManager.templatesArray) return changes;
+
+        // Check for changes in existing templates
+        this.templateManager.templatesArray.forEach(template => {
+            const templateId = template.sortID + ' ' + template.authorID;
+            const lastKnownState = this.lastKnownTemplateState.get(templateId);
+            
+            if (!lastKnownState) {
+                // New template
+                changes.push({
+                    type: 'added',
+                    templateId,
+                    template
+                });
+                return;
+            }
+
+            // Check for property changes
+            const currentState = {
+                displayName: template.displayName,
+                coords: template.coords ? [...template.coords] : null,
+                pixelCount: template.pixelCount,
+                enabled: this.getTemplateEnabledState(templateId)
+            };
+
+            const propertyChanges = [];
+            
+            if (currentState.displayName !== lastKnownState.displayName) {
+                propertyChanges.push('displayName');
+            }
+            
+            if (JSON.stringify(currentState.coords) !== JSON.stringify(lastKnownState.coords)) {
+                propertyChanges.push('coords');
+            }
+            
+            if (currentState.pixelCount !== lastKnownState.pixelCount) {
+                propertyChanges.push('pixelCount');
+            }
+            
+            if (currentState.enabled !== lastKnownState.enabled) {
+                propertyChanges.push('enabled');
+            }
+
+            if (propertyChanges.length > 0) {
+                changes.push({
+                    type: 'modified',
+                    templateId,
+                    template,
+                    properties: propertyChanges,
+                    oldState: lastKnownState,
+                    newState: currentState
+                });
+            }
+        });
+
+        // Check for removed templates
+        this.lastKnownTemplateState.forEach((state, templateId) => {
+            const stillExists = this.templateManager.templatesArray.some(template => 
+                (template.sortID + ' ' + template.authorID) === templateId
+            );
+            
+            if (!stillExists) {
+                changes.push({
+                    type: 'removed',
+                    templateId
+                });
+            }
+        });
+
+        return changes;
+    }
+
+    /**
+     * Updates template state in the gallery based on detected changes
+     * Handles template additions, modifications, and removals
+     * Requirements: 2.4, 3.4
+     * @param {Object} change - Change object describing what changed
+     */
+    updateTemplateState(change) {
+        switch (change.type) {
+            case 'added':
+                // New template added - trigger refresh to add it
+                console.log(`Template added: ${change.templateId}`);
+                this.refresh();
+                break;
+
+            case 'removed':
+                // Template removed - remove from display
+                console.log(`Template removed: ${change.templateId}`);
+                this.removeTemplateCardFromDisplay(change.templateId);
+                this.templateCards.delete(change.templateId);
+                this.clearThumbnailCache(change.templateId);
+                break;
+
+            case 'modified':
+                // Template properties changed - update card
+                console.log(`Template modified: ${change.templateId}, properties: ${change.properties.join(', ')}`);
+                
+                if (change.properties.includes('enabled')) {
+                    // Update visual state for enabled/disabled change
+                    this.updateTemplateCardVisualState(change.templateId, change.newState.enabled);
+                }
+                
+                if (change.properties.some(prop => ['displayName', 'coords', 'pixelCount'].includes(prop))) {
+                    // Update card content for other property changes
+                    this.updateExistingTemplateCard(change.templateId, change.template);
+                }
+                break;
+
+            default:
+                console.warn(`Unknown change type: ${change.type}`);
+        }
+    }
+
+    /**
+     * Performs cleanup when gallery is closed or destroyed
+     * Clears intervals, caches, and prevents further operations
+     * Requirements: 3.4
+     */
+    cleanup() {
+        // Mark as destroyed to prevent further operations
+        this.isDestroyed = true;
+
+        // Clear synchronization interval
+        if (this.syncInterval) {
+            clearInterval(this.syncInterval);
+            this.syncInterval = null;
+            console.log('State synchronization interval cleared');
+        }
+
+        // Clear state tracking
+        this.lastKnownTemplateState.clear();
+
+        // Clear caches
+        this.templateCards.clear();
+        this.thumbnailCache.clear();
+
+        console.log('Gallery cleanup completed');
+    }
+
+    /**
+     * Reinitializes the gallery after cleanup (useful for reopening)
+     * Resets destroyed state and reinitializes synchronization
+     */
+    reinitialize() {
+        this.isDestroyed = false;
+        this.setupStateSynchronization();
+        console.log('Gallery reinitialized');
     }
 
     /**
