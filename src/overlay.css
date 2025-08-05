@@ -405,6 +405,13 @@ div:has(> #bm-input-file-template),
   transform: rotate(90deg) scale(0.95);
 }
 
+/* Gallery modal close button specific styling */
+.bm-gallery-content .bm-modal-close {
+  top: 15px !important;
+  right: 15px !important;
+  z-index: 10 !important;
+}
+
 /* Template Gallery Modal Styles */
 .bm-gallery-backdrop {
   z-index: 10001;
@@ -452,6 +459,8 @@ div:has(> #bm-input-file-template),
   background: linear-gradient(135deg, rgba(21, 48, 99, 1) 0%, rgba(30, 60, 120, 1) 100%);
   border-radius: 8px 8px 0 0;
   margin: -20px -20px 0 -20px;
+  position: relative;
+  padding-right: 80px;
 }
 
 .bm-gallery-header h2 {

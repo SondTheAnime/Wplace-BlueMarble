@@ -223,7 +223,27 @@ export default class TemplateGallery {
             }
         )
             // Add modal close button
-            .addModalCloseButton().buildElement()
+            .addModalCloseButton({
+                'style': `
+                    position: absolute;
+                    top: 15px;
+                    right: 15px;
+                    background: none;
+                    border: none;
+                    color: white;
+                    font-size: 24px;
+                    cursor: pointer;
+                    padding: 0;
+                    width: 30px;
+                    height: 30px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    border-radius: 50%;
+                    transition: background-color 0.2s ease;
+                    z-index: 10;
+                `
+            }).buildElement()
 
             // Add gallery header
             .addDiv({
@@ -236,6 +256,7 @@ export default class TemplateGallery {
                 display: flex;
                 align-items: center;
                 justify-content: space-between;
+                position: relative;
             `
             })
             .addHeader(2, {
@@ -245,6 +266,7 @@ export default class TemplateGallery {
                     font-size: 1.5em;
                     font-weight: bold;
                     color: white;
+                    flex: 1;
                 `
             }).buildElement()
             .addDiv({
@@ -255,6 +277,7 @@ export default class TemplateGallery {
                     gap: 15px;
                     font-size: 0.9em;
                     color: rgba(255, 255, 255, 0.8);
+                    margin-right: 80px;
                 `
             })
             .addSmall({
