@@ -72,7 +72,7 @@ export default class TemplateManager {
     this.encodingBase = '!#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[]^_`abcdefghijklmnopqrstuvwxyz{|}~'; // Characters to use for encoding/decoding
     this.tileSize = 1000; // The number of pixels in a tile. Assumes the tile is square
     this.drawMult = 3; // The enlarged size for each pixel. E.g. when "3", a 1x1 pixel becomes a 1x1 pixel inside a 3x3 area. MUST BE ODD
-    
+
     // Template
     this.canvasTemplate = null; // Our canvas
     this.canvasTemplateZoomed = null; // The template when zoomed out
@@ -94,11 +94,11 @@ export default class TemplateManager {
   /* @__PURE__ */getCanvas() {
 
     // If the stored canvas is "fresh", return the stored canvas
-    if (document.body.contains(this.canvasTemplate)) {return this.canvasTemplate;}
+    if (document.body.contains(this.canvasTemplate)) { return this.canvasTemplate; }
     // Else, the stored canvas is "stale", get the canvas again
 
     // Attempt to find and destroy the "stale" canvas
-    document.getElementById(this.canvasTemplateID)?.remove(); 
+    document.getElementById(this.canvasTemplateID)?.remove();
 
     const canvasMain = document.querySelector(this.canvasMainID);
 
@@ -146,7 +146,7 @@ export default class TemplateManager {
   async createTemplate(blob, name, coords) {
 
     // Creates the JSON object if it does not already exist
-    if (!this.templatesJSON) {this.templatesJSON = await this.createJSON(); console.log(`Creating JSON...`);}
+    if (!this.templatesJSON) { this.templatesJSON = await this.createJSON(); console.log(`Creating JSON...`); }
 
     this.overlay.handleDisplayStatus(`Creating template at ${coords.join(', ')}...`);
 
@@ -159,7 +159,7 @@ export default class TemplateManager {
       coords: coords
     });
     template.chunked = await template.createTemplateTiles(this.tileSize); // Chunks the tiles
-    
+
     // Appends a child into the templates object
     // The child's name is the number of templates already in the list (sort order) plus the encoded player ID
     this.templatesJSON.templates[`${template.sortID} ${template.authorID}`] = {
@@ -200,7 +200,7 @@ export default class TemplateManager {
   async disableTemplate() {
 
     // Creates the JSON object if it does not already exist
-    if (!this.templatesJSON) {this.templatesJSON = await this.createJSON(); console.log(`Creating JSON...`);}
+    if (!this.templatesJSON) { this.templatesJSON = await this.createJSON(); console.log(`Creating JSON...`); }
 
 
   }
@@ -252,21 +252,32 @@ export default class TemplateManager {
 
     console.log(templateArray);
 
-    // Retrieves the relavent template tile blobs
+    // Retrieves the relavent template tile blobs, filtering by enabled state
     const templateBlobs = templateArray
+      .filter(template => {
+        // Check if template is enabled in templatesJSON
+        const templateId = template.sortID + ' ' + template.authorID;
+        if (this.templatesJSON &&
+          this.templatesJSON.templates &&
+          this.templatesJSON.templates[templateId]) {
+          return this.templatesJSON.templates[templateId].enabled !== false;
+        }
+        // Default to enabled if not found in JSON (backwards compatibility)
+        return true;
+      })
       .map(template => {
         const matchingTiles = Object.keys(template.chunked).filter(tile =>
           tile.startsWith(tileCoords)
         );
 
-        if (matchingTiles.length === 0) {return null;} // Return nothing when nothing is found
+        if (matchingTiles.length === 0) { return null; } // Return nothing when nothing is found
 
         // Retrieves the blobs of the templates for this tile
         const matchingTileBlobs = matchingTiles.map(tile => template.chunked[tile]);
 
         return matchingTileBlobs?.[0];
       })
-    .filter(Boolean);
+      .filter(Boolean);
 
     console.log(templateBlobs);
 
@@ -274,22 +285,30 @@ export default class TemplateManager {
       // ==================== INTELLIGENT PIXEL COUNTING SYSTEM ====================
       // Calculate total pixel count for templates actively being displayed in this tile
       // This provides accurate statistics by counting only templates with content in the current viewport
-      
+
       const totalPixels = templateArray
         .filter(template => {
-          // Filter templates to include only those with tiles matching current coordinates
+          // Filter templates to include only enabled templates with tiles matching current coordinates
           // This ensures we count pixels only for templates actually being rendered
+          const templateId = template.sortID + ' ' + template.authorID;
+          const isEnabled = this.templatesJSON &&
+            this.templatesJSON.templates &&
+            this.templatesJSON.templates[templateId] ?
+            this.templatesJSON.templates[templateId].enabled !== false : true;
+
+          if (!isEnabled) return false;
+
           const matchingTiles = Object.keys(template.chunked).filter(tile =>
             tile.startsWith(tileCoords)
           );
           return matchingTiles.length > 0;
         })
         .reduce((sum, template) => sum + (template.pixelCount || 0), 0);
-      
+
       // Format pixel count with locale-appropriate thousands separators for better readability
       // Examples: "1,234,567" (US), "1.234.567" (DE), "1 234 567" (FR)
       const pixelCountFormatted = new Intl.NumberFormat().format(totalPixels);
-      
+
       // Display comprehensive status information including both template count and pixel statistics
       // This gives users immediate feedback about the complexity and scope of what's being rendered
       this.overlay.handleDisplayStatus(
@@ -297,7 +316,7 @@ export default class TemplateManager {
         `Total pixels: ${pixelCountFormatted}`
       );
     }
-    
+
     const tileBitmap = await createImageBitmap(tileBlob);
 
     const canvas = new OffscreenCanvas(drawSize, drawSize);

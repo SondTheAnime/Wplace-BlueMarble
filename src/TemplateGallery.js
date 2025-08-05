@@ -30,6 +30,7 @@ export default class TemplateGallery {
         this.clearThumbnailCache = this.clearThumbnailCache.bind(this);
         this.preloadThumbnails = this.preloadThumbnails.bind(this);
         this.updateThumbnail = this.updateThumbnail.bind(this);
+        this.updateTemplateCardVisualState = this.updateTemplateCardVisualState.bind(this);
     }
 
     /**
@@ -819,14 +820,101 @@ export default class TemplateGallery {
 
     /**
      * Handles template toggle (enable/disable) action
-     * Placeholder implementation - will be expanded in task 4.1
+     * Integrates with TemplateManager to enable/disable templates and updates visual state
+     * Requirements: 2.1, 2.2, 2.3, 2.4
      * @param {string} templateId - ID of template to toggle
      */
     handleTemplateToggle(templateId) {
-        // Placeholder - basic toggle logic
-        console.log(`Toggle template: ${templateId}`);
-        // TODO: Integrate with TemplateManager to enable/disable template
-        // TODO: Update visual state of toggle button
+        try {
+            // Ensure templatesJSON exists
+            if (!this.templateManager.templatesJSON || 
+                !this.templateManager.templatesJSON.templates || 
+                !this.templateManager.templatesJSON.templates[templateId]) {
+                console.error(`Template ${templateId} not found in templatesJSON`);
+                this.overlay.handleDisplayError(`Template ${templateId} not found`);
+                return;
+            }
+
+            // Get current enabled state
+            const currentState = this.templateManager.templatesJSON.templates[templateId].enabled !== false;
+            const newState = !currentState;
+
+            // Update enabled state in templatesJSON
+            this.templateManager.templatesJSON.templates[templateId].enabled = newState;
+
+            console.log(`Template ${templateId} ${newState ? 'enabled' : 'disabled'}`);
+
+            // Update visual state immediately
+            this.updateTemplateCardVisualState(templateId, newState);
+
+            // Display status message
+            const templateName = this.templateManager.templatesJSON.templates[templateId].name || 'Template';
+            this.overlay.handleDisplayStatus(
+                `${templateName} ${newState ? 'enabled' : 'disabled'}`
+            );
+
+        } catch (error) {
+            console.error(`Error toggling template ${templateId}:`, error);
+            this.overlay.handleDisplayError(`Failed to toggle template: ${error.message}`);
+        }
+    }
+
+    /**
+     * Updates the visual state of a template card to reflect its enabled/disabled status
+     * Changes toggle button appearance, card border, and icon state
+     * Requirements: 2.4
+     * @param {string} templateId - ID of template to update visual state for
+     * @param {boolean} isEnabled - New enabled state of the template
+     */
+    updateTemplateCardVisualState(templateId, isEnabled) {
+        // Find the template card in the cached cards
+        const card = this.templateCards.get(templateId);
+        if (!card) {
+            console.warn(`Template card ${templateId} not found in cache`);
+            return;
+        }
+
+        // Update card border to reflect enabled state
+        card.style.borderColor = isEnabled ? '#1061e5' : 'rgba(255, 255, 255, 0.2)';
+
+        // Find and update the toggle button
+        const toggleBtn = card.querySelector('.bm-toggle-btn');
+        if (toggleBtn) {
+            // Update button data attribute
+            toggleBtn.dataset.enabled = isEnabled.toString();
+            
+            // Update button title/tooltip
+            toggleBtn.title = isEnabled ? 'Disable template' : 'Enable template';
+            
+            // Update button background color
+            toggleBtn.style.backgroundColor = isEnabled ? '#1061e5' : 'rgba(255, 255, 255, 0.2)';
+            
+            // Update toggle icon
+            const toggleIcon = toggleBtn.querySelector('.bm-toggle-icon');
+            if (toggleIcon) {
+                toggleIcon.textContent = isEnabled ? '👁' : '👁‍🗨';
+            }
+
+            // Update hover effect to use correct base color
+            const updateHoverEffect = () => {
+                toggleBtn.removeEventListener('mouseenter', updateHoverEffect);
+                toggleBtn.removeEventListener('mouseleave', updateHoverEffect);
+                
+                toggleBtn.addEventListener('mouseenter', () => {
+                    toggleBtn.style.backgroundColor = '#1061e5';
+                    toggleBtn.style.transform = 'translateY(-1px)';
+                });
+                
+                toggleBtn.addEventListener('mouseleave', () => {
+                    toggleBtn.style.backgroundColor = isEnabled ? '#1061e5' : 'rgba(255, 255, 255, 0.2)';
+                    toggleBtn.style.transform = 'translateY(0)';
+                });
+            };
+            
+            updateHoverEffect();
+        }
+
+        console.log(`Updated visual state for template ${templateId}: ${isEnabled ? 'enabled' : 'disabled'}`);
     }
 
     /**
