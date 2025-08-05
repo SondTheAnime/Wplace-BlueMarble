@@ -31,6 +31,9 @@ export default class TemplateGallery {
         this.preloadThumbnails = this.preloadThumbnails.bind(this);
         this.updateThumbnail = this.updateThumbnail.bind(this);
         this.updateTemplateCardVisualState = this.updateTemplateCardVisualState.bind(this);
+        this.showRemoveConfirmationDialog = this.showRemoveConfirmationDialog.bind(this);
+        this.confirmTemplateRemoval = this.confirmTemplateRemoval.bind(this);
+        this.removeTemplateCardFromDisplay = this.removeTemplateCardFromDisplay.bind(this);
     }
 
     /**
@@ -919,15 +922,262 @@ export default class TemplateGallery {
 
     /**
      * Handles template removal action
-     * Placeholder implementation - will be expanded in task 4.2
+     * Shows confirmation dialog and removes template if confirmed
+     * Requirements: 3.1, 3.2, 3.3, 3.4
      * @param {string} templateId - ID of template to remove
      */
     handleTemplateRemove(templateId) {
-        // Placeholder - basic remove logic with confirmation
-        console.log(`Remove template: ${templateId}`);
-        // TODO: Show confirmation dialog
-        // TODO: Integrate with TemplateManager to remove template
-        // TODO: Update gallery display
+        try {
+            // Get template information for confirmation dialog
+            const template = this.templateManager.templatesJSON?.templates?.[templateId];
+            if (!template) {
+                console.error(`Template ${templateId} not found`);
+                this.overlay.handleDisplayError(`Template ${templateId} not found`);
+                return;
+            }
+
+            const templateName = template.name || 'Unnamed Template';
+
+            // Show confirmation dialog
+            this.showRemoveConfirmationDialog(templateId, templateName);
+
+        } catch (error) {
+            console.error(`Error initiating template removal for ${templateId}:`, error);
+            this.overlay.handleDisplayError(`Failed to remove template: ${error.message}`);
+        }
+    }
+
+    /**
+     * Shows a confirmation dialog for template removal
+     * Creates a modal dialog with confirm/cancel options
+     * Requirements: 3.1
+     * @param {string} templateId - ID of template to remove
+     * @param {string} templateName - Display name of template
+     */
+    showRemoveConfirmationDialog(templateId, templateName) {
+        // Create confirmation modal
+        this.overlay.createModal(
+            {
+                'id': 'bm-remove-confirmation-modal',
+                'className': 'bm-modal-backdrop bm-remove-confirmation-backdrop'
+            },
+            {
+                'id': 'bm-remove-confirmation-content',
+                'className': 'bm-modal-content bm-remove-confirmation-content',
+                'style': `
+                    background-color: rgba(21, 48, 99, 0.95);
+                    color: white;
+                    border-radius: 8px;
+                    padding: 30px;
+                    max-width: 400px;
+                    width: 90vw;
+                    text-align: center;
+                    font-family: 'Roboto Mono', 'Courier New', 'Monaco', 'DejaVu Sans Mono', monospace, 'Arial';
+                    letter-spacing: 0.05em;
+                    border: 2px solid #dc3545;
+                `
+            },
+            () => {
+                // Modal closed without action
+                console.log('Remove confirmation dialog closed');
+            }
+        )
+            // Add warning icon
+            .addDiv({
+                'style': `
+                    font-size: 3em;
+                    margin-bottom: 15px;
+                    color: #dc3545;
+                `,
+                'textContent': '⚠️'
+            }).buildElement()
+
+            // Add confirmation title
+            .addHeader(3, {
+                'textContent': 'Remove Template',
+                'style': `
+                    margin: 0 0 15px 0;
+                    font-size: 1.3em;
+                    font-weight: bold;
+                    color: #dc3545;
+                `
+            }).buildElement()
+
+            // Add confirmation message
+            .addP({
+                'textContent': `Are you sure you want to remove "${templateName}"?`,
+                'style': `
+                    margin: 0 0 10px 0;
+                    font-size: 1em;
+                    line-height: 1.4;
+                    color: rgba(255, 255, 255, 0.9);
+                    font-weight: bold;
+                `
+            }).buildElement()
+            .addSmall({
+                'textContent': 'This action cannot be undone.',
+                'style': `
+                    color: rgba(255, 255, 255, 0.7);
+                    font-style: italic;
+                    display: block;
+                    margin-bottom: 20px;
+                `
+            }).buildElement()
+
+            // Add button container
+            .addDiv({
+                'className': 'bm-confirmation-buttons',
+                'style': `
+                    display: flex;
+                    gap: 15px;
+                    justify-content: center;
+                    margin-top: 25px;
+                `
+            })
+
+            // Add cancel button
+            .addButton({
+                'textContent': 'Cancel',
+                'className': 'bm-cancel-btn',
+                'style': `
+                    background-color: rgba(255, 255, 255, 0.2);
+                    border: 1px solid rgba(255, 255, 255, 0.3);
+                    border-radius: 4px;
+                    padding: 10px 20px;
+                    color: white;
+                    cursor: pointer;
+                    font-size: 0.9em;
+                    font-family: inherit;
+                    transition: all 0.2s ease;
+                    min-width: 80px;
+                `
+            }).buildElement()
+
+            // Add confirm button
+            .addButton({
+                'textContent': 'Remove',
+                'className': 'bm-confirm-remove-btn',
+                'style': `
+                    background-color: #dc3545;
+                    border: 1px solid #dc3545;
+                    border-radius: 4px;
+                    padding: 10px 20px;
+                    color: white;
+                    cursor: pointer;
+                    font-size: 0.9em;
+                    font-family: inherit;
+                    transition: all 0.2s ease;
+                    min-width: 80px;
+                    font-weight: bold;
+                `
+            }).buildElement()
+
+            .buildElement()
+
+            // Build and show the modal
+            .buildOverlay(document.body);
+
+        // Get the modal element and buttons
+        const modal = document.getElementById('bm-remove-confirmation-modal');
+        const cancelBtn = modal.querySelector('.bm-cancel-btn');
+        const confirmBtn = modal.querySelector('.bm-confirm-remove-btn');
+
+        // Add button event listeners
+        cancelBtn.addEventListener('click', () => {
+            this.overlay.closeModal(modal);
+        });
+
+        confirmBtn.addEventListener('click', () => {
+            this.overlay.closeModal(modal);
+            this.confirmTemplateRemoval(templateId, templateName);
+        });
+
+        // Add hover effects
+        cancelBtn.addEventListener('mouseenter', () => {
+            cancelBtn.style.backgroundColor = 'rgba(255, 255, 255, 0.3)';
+            cancelBtn.style.transform = 'translateY(-1px)';
+        });
+
+        cancelBtn.addEventListener('mouseleave', () => {
+            cancelBtn.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
+            cancelBtn.style.transform = 'translateY(0)';
+        });
+
+        confirmBtn.addEventListener('mouseenter', () => {
+            confirmBtn.style.backgroundColor = '#c82333';
+            confirmBtn.style.transform = 'translateY(-1px)';
+        });
+
+        confirmBtn.addEventListener('mouseleave', () => {
+            confirmBtn.style.backgroundColor = '#dc3545';
+            confirmBtn.style.transform = 'translateY(0)';
+        });
+    }
+
+    /**
+     * Confirms and executes template removal
+     * Integrates with TemplateManager and updates gallery display
+     * Requirements: 3.2, 3.3, 3.4
+     * @param {string} templateId - ID of template to remove
+     * @param {string} templateName - Display name of template
+     */
+    confirmTemplateRemoval(templateId, templateName) {
+        try {
+            // Remove template using TemplateManager
+            const success = this.templateManager.deleteTemplate(templateId);
+
+            if (success) {
+                // Clear thumbnail cache for removed template
+                this.clearThumbnailCache(templateId);
+
+                // Remove template card from gallery display
+                this.removeTemplateCardFromDisplay(templateId);
+
+                // Refresh gallery to update counts and empty state
+                this.refresh();
+
+                // Show success message
+                this.overlay.handleDisplayStatus(`Template "${templateName}" removed successfully`);
+
+                console.log(`Successfully removed template ${templateId}`);
+            } else {
+                // Show error message
+                this.overlay.handleDisplayError(`Failed to remove template "${templateName}"`);
+            }
+
+        } catch (error) {
+            console.error(`Error confirming template removal for ${templateId}:`, error);
+            this.overlay.handleDisplayError(`Failed to remove template: ${error.message}`);
+        }
+    }
+
+    /**
+     * Removes a template card from the gallery display
+     * Updates the visual gallery without full refresh for better UX
+     * Requirements: 3.4
+     * @param {string} templateId - ID of template card to remove
+     */
+    removeTemplateCardFromDisplay(templateId) {
+        // Remove from template cards cache
+        const card = this.templateCards.get(templateId);
+        if (card) {
+            // Animate card removal
+            card.style.transition = 'all 0.3s ease';
+            card.style.transform = 'scale(0.8)';
+            card.style.opacity = '0';
+
+            // Remove from DOM after animation
+            setTimeout(() => {
+                if (card.parentNode) {
+                    card.parentNode.removeChild(card);
+                }
+            }, 300);
+
+            // Remove from cache
+            this.templateCards.delete(templateId);
+
+            console.log(`Removed template card ${templateId} from display`);
+        }
     }
 
     /**

@@ -189,10 +189,43 @@ export default class TemplateManager {
   }
 
   /** Deletes a template from the JSON object.
-   * Also delete's the corrosponding {@link Template} class instance
+   * Also deletes the corresponding {@link Template} class instance
+   * @param {string} templateId - The ID of the template to delete (format: "sortID authorID")
+   * @returns {boolean} True if template was successfully deleted, false otherwise
    */
-  deleteTemplate() {
+  deleteTemplate(templateId) {
+    try {
+      // Check if templatesJSON exists and has the template
+      if (!this.templatesJSON || 
+          !this.templatesJSON.templates || 
+          !this.templatesJSON.templates[templateId]) {
+        console.warn(`Template ${templateId} not found in templatesJSON`);
+        return false;
+      }
 
+      // Remove from templatesJSON
+      delete this.templatesJSON.templates[templateId];
+
+      // Remove from templatesArray
+      const templateIndex = this.templatesArray.findIndex(template => {
+        const id = template.sortID + ' ' + template.authorID;
+        return id === templateId;
+      });
+
+      if (templateIndex !== -1) {
+        this.templatesArray.splice(templateIndex, 1);
+        console.log(`Removed template ${templateId} from templatesArray`);
+      } else {
+        console.warn(`Template ${templateId} not found in templatesArray`);
+      }
+
+      console.log(`Successfully deleted template ${templateId}`);
+      return true;
+
+    } catch (error) {
+      console.error(`Error deleting template ${templateId}:`, error);
+      return false;
+    }
   }
 
   /** Disables the template from view
