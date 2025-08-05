@@ -345,14 +345,6 @@ export default class TemplateGallery {
                         line-height: 1.3;
                     `
             }).buildElement()
-            .addSmall({
-                'textContent': 'Templates will appear here with thumbnails and management controls',
-                'style': `
-                        margin: 0;
-                        opacity: 0.6;
-                        font-size: 0.9em;
-                    `
-            }).buildElement()
             .buildElement()
             .buildElement()
 
