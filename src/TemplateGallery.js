@@ -57,7 +57,6 @@ export default class TemplateGallery {
 
     /**
      * Shows the template gallery modal
-     * Requirements: 1.1, 5.1, 5.2, 5.3
      */
     show() {
         if (this.isVisible) return;
@@ -76,7 +75,6 @@ export default class TemplateGallery {
     /**
      * Hides the template gallery modal
      * Implements proper cleanup when gallery is closed
-     * Requirements: 5.1, 5.2, 5.3, 3.4
      */
     hide() {
         if (!this.isVisible || !this.galleryElement) return;
@@ -95,7 +93,6 @@ export default class TemplateGallery {
      * Refreshes the template gallery with current templates
      * Updates the display to reflect current state of templateManager
      * Implements efficient re-rendering to avoid unnecessary DOM updates
-     * Requirements: 1.4, 3.4
      */
     refresh() {
         if (!this.galleryElement) return;
@@ -187,7 +184,6 @@ export default class TemplateGallery {
     /**
      * Creates the main gallery modal structure
      * Uses the Overlay class modal functionality for consistent styling and behavior
-     * Requirements: 1.1, 1.4
      */
     createGalleryModal() {
         // Use the Overlay class to create a modal with proper backdrop and close functionality
@@ -405,7 +401,6 @@ export default class TemplateGallery {
      * Generates a thumbnail for a template using createImageBitmap
      * Creates a 100x100px thumbnail with nearest-neighbor filtering for pixel art
      * Handles thumbnail generation failures with placeholder icons
-     * Requirements: 1.2
      * @param {Object} template - Template object from templateManager
      * @returns {Promise<HTMLCanvasElement|null>} Canvas element with thumbnail or null if failed
      */
@@ -680,7 +675,6 @@ export default class TemplateGallery {
     /**
      * Creates a template card element for a given template
      * Generates a comprehensive card with thumbnail, info, and controls
-     * Requirements: 1.2, 1.3, 6.1, 6.2, 6.3, 6.4
      * @param {Object} template - Template object from templateManager
      * @returns {HTMLElement} Template card element
      */
@@ -1072,7 +1066,6 @@ export default class TemplateGallery {
     /**
      * Handles template toggle (enable/disable) action
      * Integrates with TemplateManager to enable/disable templates and updates visual state
-     * Requirements: 2.1, 2.2, 2.3, 2.4
      * @param {string} templateId - ID of template to toggle
      */
     handleTemplateToggle(templateId) {
@@ -1157,7 +1150,6 @@ export default class TemplateGallery {
     /**
      * Updates the visual state of a template card to reflect its enabled/disabled status
      * Changes toggle button appearance, card border, and icon state
-     * Requirements: 2.4
      * @param {string} templateId - ID of template to update visual state for
      * @param {boolean} isEnabled - New enabled state of the template
      */
@@ -1215,7 +1207,6 @@ export default class TemplateGallery {
     /**
      * Handles template removal action
      * Shows confirmation dialog and removes template if confirmed
-     * Requirements: 3.1, 3.2, 3.3, 3.4
      * @param {string} templateId - ID of template to remove
      */
     handleTemplateRemove(templateId) {
@@ -1267,7 +1258,6 @@ export default class TemplateGallery {
     /**
      * Shows a confirmation dialog for template removal
      * Creates a modal dialog with confirm/cancel options
-     * Requirements: 3.1
      * @param {string} templateId - ID of template to remove
      * @param {string} templateName - Display name of template
      */
@@ -1435,7 +1425,6 @@ export default class TemplateGallery {
     /**
      * Confirms and executes template removal
      * Integrates with TemplateManager and updates gallery display
-     * Requirements: 3.2, 3.3, 3.4
      * @param {string} templateId - ID of template to remove
      * @param {string} templateName - Display name of template
      */
@@ -1513,7 +1502,6 @@ export default class TemplateGallery {
     /**
      * Removes a template card from the gallery display
      * Updates the visual gallery without full refresh for better UX
-     * Requirements: 3.4
      * @param {string} templateId - ID of template card to remove
      */
     removeTemplateCardFromDisplay(templateId) {
@@ -1630,7 +1618,6 @@ export default class TemplateGallery {
     /**
      * Sets up automatic refresh when templates are added or removed
      * Hooks into templateManager operations to trigger gallery updates
-     * Requirements: 1.4, 3.4
      */
     setupAutomaticRefresh() {
         // Store original methods to wrap them
@@ -1675,7 +1662,6 @@ export default class TemplateGallery {
     /**
      * Forces a manual refresh of the gallery
      * Useful for external calls when template state changes outside of normal operations
-     * Requirements: 1.4, 3.4
      */
     forceRefresh() {
         if (this.isVisible) {
@@ -1687,7 +1673,6 @@ export default class TemplateGallery {
     /**
      * Sets up state synchronization system to keep gallery in sync with TemplateManager
      * Monitors template state changes and updates gallery accordingly
-     * Requirements: 2.4, 3.4
      */
     setupStateSynchronization() {
         // Initialize template state tracking
@@ -1745,7 +1730,6 @@ export default class TemplateGallery {
     /**
      * Synchronizes template states between TemplateManager and gallery display
      * Detects changes and updates gallery cards accordingly
-     * Requirements: 2.4, 3.4
      */
     syncTemplateStates() {
         if (this.isDestroyed || !this.isVisible) return;
@@ -1846,7 +1830,6 @@ export default class TemplateGallery {
     /**
      * Updates template state in the gallery based on detected changes
      * Handles template additions, modifications, and removals
-     * Requirements: 2.4, 3.4
      * @param {Object} change - Change object describing what changed
      */
     updateTemplateState(change) {
@@ -1888,7 +1871,6 @@ export default class TemplateGallery {
     /**
      * Performs cleanup when gallery is closed or destroyed
      * Clears intervals, caches, and prevents further operations
-     * Requirements: 3.4
      */
     cleanup() {
         // Mark as destroyed to prevent further operations
@@ -1964,7 +1946,6 @@ export default class TemplateGallery {
 
     /**
      * Shows loading state on a button with loading indicator
-     * Requirements: 3.1
      * @param {HTMLElement} button - Button element to show loading state on
      * @param {string} loadingText - Text to show during loading (optional)
      */
@@ -2012,7 +1993,6 @@ export default class TemplateGallery {
 
     /**
      * Clears loading state from a button and restores original content
-     * Requirements: 3.1
      * @param {HTMLElement} button - Button element to clear loading state from
      */
     clearButtonLoadingState(button) {
@@ -2033,7 +2013,6 @@ export default class TemplateGallery {
 
     /**
      * Adds comprehensive tooltips and help text for gallery controls
-     * Requirements: 3.1
      * @param {HTMLElement} element - Element to add tooltip to
      * @param {string} tooltipText - Tooltip text to display
      * @param {string} position - Tooltip position ('top', 'bottom', 'left', 'right')
@@ -2151,7 +2130,6 @@ export default class TemplateGallery {
 
     /**
      * Shows comprehensive help dialog for gallery usage
-     * Requirements: 3.1
      */
     showGalleryHelp() {
         const helpContent = `
@@ -2282,7 +2260,6 @@ export default class TemplateGallery {
      * Handles template navigation action
      * Handles template navigation functionality by setting coordinates in overlay
      * Sets the template coordinates in the main overlay coordinate input fields
-     * Requirements: 4.1, 4.2, 4.3, 4.4
      * @param {string} templateId - ID of template to navigate to
      */
     handleTemplateNavigate(templateId) {
